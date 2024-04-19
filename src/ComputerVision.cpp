@@ -12,6 +12,7 @@ void ComputerVision::init(const sensor_msgs::msg::CameraInfo &cinfo_left, const 
 
     model_.fromCameraInfo(cinfo_left, cinfo_right);
 
+    //Compute stereo reprojection matrix Q
     double Tx = -model_.baseline();
     Q_(0,0) =  1.0;
     Q_(0,3) = -model_.left().cx();
@@ -23,9 +24,9 @@ void ComputerVision::init(const sensor_msgs::msg::CameraInfo &cinfo_left, const 
     
     // Init stereo matcher
     // left_matcher = cv::StereoBM::create(16, 13); //Num disp, block size
-    left_matcher_ = cv::StereoBM::create(16, 5);
-    // left_matcher_->setPreFilterType(1);
+    left_matcher_ = cv::StereoBM::create(16, 9);
 
+    // left_matcher_->setPreFilterType(1);
     // left_matcher_->setPreFilterSize(PRE_FILTER_SIZE);
     // left_matcher_->setPreFilterCap(PRE_FILTER_CAP);
     // left_matcher_->setUniquenessRatio(UNIQUENESS_RATIO);
@@ -187,6 +188,7 @@ vector<Point> ComputerVision::scaleContour(vector<Point> contour, float scale) {
 
 bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &left_rect, Mat &right_rect) {
 
+    //Uncomment for disparity testing
     //Convert left and right to grayscale
     cv::Mat left_rect_mono, right_rect_mono;
     cv::cvtColor(left_rect,  left_rect_mono,  cv::COLOR_BGR2GRAY);
@@ -204,17 +206,13 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     wls_filter_->filter(left_disp, left_rect_mono, filtered_disp, right_disp);
     // std::cout << left_disp << std::endl;
 
+    double min_val, max_val;
+    cv::minMaxLoc(filtered_disp, &min_val, &max_val);
+    Mat disparity_vis;
+    filtered_disp.convertTo(disparity_vis, CV_8U, 255.0 / (max_val - min_val), -min_val * 255.0 / (max_val - min_val));
+
     namedWindow("Filtered Disparity");
-    imshow("Filtered Disparity", filtered_disp);
-
-
-
-    return true;
-
-    cv::Mat disp8;
-    cv::normalize(left_disp, disp8, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-
-
+    imshow("Filtered Disparity", disparity_vis);
 
     return true;
 
@@ -309,7 +307,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     Mat imgLcountours;
     left_rect.copyTo(imgLcountours);
     drawContours(imgLcountours, contoursL, index_L, Scalar(255, 255, 255), -1);
-    // imshow("imgLcountours", imgLcountours);
+    imshow("imgLcountours", imgLcountours);
 
     //piComm->setStreamFrame(imgL, "Draw Contours");
 
@@ -340,7 +338,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
     Mat imgLCircle;
     left_rect.copyTo(imgLCircle);
-    circle(imgLCircle,p_L, 50, Scalar(0,0,0), -1);
+    circle(imgLCircle, p_L, 50, Scalar(0,0,0), -1);
     // imshow("imgLCircle", imgLCircle);
 
     threshold(maskL, maskL, 127, 255, THRESH_BINARY);
@@ -350,28 +348,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     Mat masked_imgL, masked_imgR;
     bitwise_and(left_rect,  left_rect,  masked_imgL, maskL);
     bitwise_and(right_rect, right_rect, masked_imgR, maskR);
-
-
-
-
-
-
-    return true;
-
-    // cv::Mat xyz;
-    // cv::reprojectImageTo3D(filtered_disp, xyz, Q_, true, -1);
-
-    // //benchmark("Compute Depth");
-    // Mat xyz;
-    // cv::reprojectImageTo3D(filtered_disp, xyz, Q, true, -1);
-    // Mat XYZ[3];
-    // Mat x, y, z;
-    // split(xyz, XYZ);
-    // z = XYZ[2];
-
-    //For benchmarking
     
-
     try {
         // Perform ORB feature extraction and matching
         int num_features = 25;
@@ -389,27 +366,23 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
         //Filter keypoints
         vector<KeyPoint> kp_filt_L;
-        for (const auto& k : keypointsL)
-        {
-        //Calculate Float
-        float dist = sqrt(pow(k.pt.x - p_L.x, 2) + pow(k.pt.y - p_L.y, 2));
+        for (const auto& k : keypointsL) {
+            //Calculate Float
+            float dist = sqrt(pow(k.pt.x - p_L.x, 2) + pow(k.pt.y - p_L.y, 2));
 
-          if (dist < mask_radius)
-          {
-            kp_filt_L.push_back(k);
-          }
+            if (dist < mask_radius) {
+                kp_filt_L.push_back(k);
+            }
         }
 
         vector<KeyPoint> kp_filt_R;
-        for (const auto& k : keypointsR)
-        {
-        //Calculate Float
-        float dist = sqrt(pow(k.pt.x - p_R.x, 2) + pow(k.pt.y - p_R.y, 2));
+        for (const auto& k : keypointsR) {
+            //Calculate Float
+            float dist = sqrt(pow(k.pt.x - p_R.x, 2) + pow(k.pt.y - p_R.y, 2));
 
-          if (dist < mask_radius)
-          {
-            kp_filt_R.push_back(k);
-          }
+            if (dist < mask_radius) {
+                kp_filt_R.push_back(k);
+            }
         }
 
         //DEBUG: Filtering
@@ -429,17 +402,17 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         const float ratio_thresh = 0.8f;
         vector<DMatch> good_matches;
         for (size_t i = 0; i < knn_matches.size(); i++) {
-        if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance) {
-          good_matches.push_back(knn_matches[i][0]);
-        }
+            if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance) {
+              good_matches.push_back(knn_matches[i][0]);
+            }
         }
 
         // Draw good matches
         Mat img_matches;
         drawMatches(masked_imgL, kp_filt_L, masked_imgR, kp_filt_R, knn_matches, img_matches);
 
-        // namedWindow("ORB Matches");
-        // imshow("ORB Matches", img_matches);
+        namedWindow("ORB Matches");
+        imshow("ORB Matches", img_matches);
 
         //waitKey(1);
         // piComm->setStreamFrame(img_matches, "Matches");

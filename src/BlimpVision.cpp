@@ -6,20 +6,14 @@ using namespace std::chrono_literals;
 BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     RCLCPP_INFO(this->get_logger(), "Initializing Blimp Vision Node");
 
-    // it_ = std::make_shared<image_transport::ImageTransport>(this->shared_from_this()); // https://answers.ros.org/question/353828/getting-a-nodesharedptr-from-this/
-    // it_img_sub_ = std::make_shared<image_transport::Subscriber>(it_->subscribe("image_raw", 1, std::bind(&BlimpVision::image_callback, this, std::placeholders::_1)));
-    // comp_img_subscriber_ = this->create_subscription<sensor_msgs::msg::CompressedImage>("image_raw/compressed", 1, std::bind(&BlimpVision::compressed_image_callback, this, _1));
-    // it_.subscribe("image_raw", 1, std::bind(&BlimpVision::image_callback, this, std::placeholders::_1));
-    // sub_camera_ = image_transport::create_camera_subscription(this, "image_raw", std::bind(&BlimpVision::image_callback, this, std::placeholders::_1, std::placeholders::_2), "raw");
-
     //Load camera configuration
     this->declare_parameter<std::string>("video_device", "/dev/video0");
     this->declare_parameter<int>("image_width", 2560);
     this->declare_parameter<int>("image_height", 960);
 
     std::string video_device = this->get_parameter("video_device").as_string();
-    int image_width = this->get_parameter("image_width").as_int();
-    int image_height = this->get_parameter("image_height").as_int();
+    image_width_ = this->get_parameter("image_width").as_int();
+    image_height_ = this->get_parameter("image_height").as_int();
 
     //Load camera calibration files
     this->declare_parameter<std::string>("camera_id", "camera1");
@@ -88,33 +82,12 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     //Initialize computer vision processing object with left and right camera infos
     computer_vision_.init(cinfo_left_, cinfo_right_);
 
-    // model_.fromCameraInfo(cinfo_left_, cinfo_right_);
-
-    // std::cout << model_.baseline() << std::endl;
-    // cv::Matx44d Q = model_.reprojectionMatrix();
-
-    //Compute stereo reprojection matrix Q
-  
-    // double cx = model_.left().cx();
-    // double cy = model_.left().cy();
-    // double fx = model_.left().fx();
-    // double fy = model_.left().fy();
-    // double cxr = model_.right().cx();
-
-    // cv::Matx44d Q;
-    // std::cout << Q << std::endl;
-
     //Open capture device
     cap_.open(video_device, cv::CAP_V4L);
 
     //Set the stereo cam to desired resolution
-    cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width);
-    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height);
-
-    // image_subscriber_ = image_transport::create_subscription(this, "image_raw", std::bind(&BlimpVision::image_callback, this, std::placeholders::_1), "raw");
-    // image_subscriber_ = this->create_subscription<sensor_msgs::msg::Image>("image_raw", 1, std::bind(&BlimpVision::image_callback, this, std::placeholders::_1));
-
-    // return;
+    cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_);
+    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_);
 
     one_hz_timer_ = this->create_wall_timer(1000ms, std::bind(&BlimpVision::one_hz_timer_callback, this));
     camera_timer_ = this->create_wall_timer(1ns, std::bind(&BlimpVision::camera_timer_callback, this));
@@ -147,9 +120,8 @@ void BlimpVision::camera_timer_callback() {
     cv::remap(right_frame, right_rect, map_1_right_, map_2_right_, rect_interpolation_, cv::BORDER_CONSTANT, 0);
 
     //Display left and right rectified frames
-    cv::imshow("Left Rect", left_rect);
-    cv::imshow("Right Rect", right_rect);
-
+    // cv::imshow("Left Rect", left_rect);
+    // cv::imshow("Right Rect", right_rect);
 
     autoState mode = searching;
     goalType goalColor = orange;
@@ -157,8 +129,6 @@ void BlimpVision::camera_timer_callback() {
 
     std::vector<std::vector<float>> target;
     target = computer_vision_.getTargetBalloon();
-
-    // cv::imshow("Left", left_frame);
 
     cv::waitKey(1);
 

@@ -28,29 +28,20 @@ private:
     // rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscriber_;
     rclcpp::TimerBase::SharedPtr one_hz_timer_, camera_timer_;
 
-    // image_transport::ImageTransport it_;
-    // image_transport::Subscriber image_subscriber_;
-    // image_transport::CameraSubscriber sub_camera_;
-
-    VideoCapture cap_;
-
     std::shared_ptr<camera_info_manager::CameraInfoManager> cinfomgr_left_;
     std::shared_ptr<camera_info_manager::CameraInfoManager> cinfomgr_right_;
 
     sensor_msgs::msg::CameraInfo cinfo_left_;
     sensor_msgs::msg::CameraInfo cinfo_right_;
 
+    VideoCapture cap_;
     cv::Mat map_1_left_, map_2_left_;
     cv::Mat map_1_right_, map_2_right_;
 
-    // Processing state (note: only safe because we're single-threaded!)
-    
+    int image_width_, image_height_;
 
     int rect_interpolation_;
     int frame_count_;
-
-    int maxx[3] = {0, 0, 0};
-    int minn[3] = {255, 255, 255};
 
     ComputerVision computer_vision_;
 
