@@ -91,6 +91,8 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     //Set the stereo cam to desired resolution
     cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_);
+    cap_.set(cv::CAP_PROP_FPS, 30);
+    cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
 
     one_hz_timer_ = this->create_wall_timer(1000ms, std::bind(&BlimpVision::one_hz_timer_callback, this));
 
@@ -128,15 +130,18 @@ void BlimpVision::camera_timer_callback() {
     cv::remap(right_frame, right_rect, map_1_right_, map_2_right_, rect_interpolation_, cv::BORDER_CONSTANT, 0);
 
     //Display left and right rectified frames
-    // cv::imshow("Left Rect", left_rect);
-    // cv::imshow("Right Rect", right_rect);
+    cv::imshow("Left Unrect", left_frame);
+    cv::imshow("Right Unrect", right_frame);
 
-    autoState mode = searching;
-    goalType goalColor = orange;
-    computer_vision_.update(left_rect, right_rect, mode, goalColor);
+    cv::imshow("Left Rect", left_rect);
+    cv::imshow("Right Rect", right_rect);
 
-    std::vector<std::vector<float>> target;
-    target = computer_vision_.getTargetBalloon();
+    // autoState mode = searching;
+    // goalType goalColor = orange;
+    // computer_vision_.update(left_rect, right_rect, mode, goalColor);
+
+    // std::vector<std::vector<float>> target;
+    // target = computer_vision_.getTargetBalloon();
 
     cv::waitKey(1);
     frame_count_++;

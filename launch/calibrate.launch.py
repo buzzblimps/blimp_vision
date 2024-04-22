@@ -9,12 +9,12 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'namespace',
-            default_value='MaryO',
+            default_value='GravyLongWay',
             description='Namespace for the node'
         ),
         DeclareLaunchArgument(
             'calibration_file',
-            default_value='camera1',
+            default_value='camera4',
             description='Name of the calibration file'
         ),
         Node(
@@ -22,7 +22,7 @@ def generate_launch_description():
             executable='usb_cam_node_exe',
             name='usb_cam_node',
             namespace=[LaunchConfiguration('namespace'), '/sync'],
-            parameters=[os.path.join(get_package_share_directory('blimp_vision'), 'param', 'elp_laptop.yaml')],
+            parameters=[os.path.join(get_package_share_directory('blimp_vision'), 'param', 'elp_config_laptop.yaml')],
             output='screen'
         ),
         Node(
