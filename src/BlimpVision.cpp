@@ -1,7 +1,15 @@
 #include "BlimpVision.hpp"
+#include <iomanip>
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
+
+// blimp namespace / targets
+// Float64MultiArray [4] = [x (pixels), y (pixels), z (m)]
+// If no target, still send message with z=1000
+
+// goalColor,       Int64   /goal_color      orange=0, yellow=1
+// autonomousState  Int64   /state_machine   same autoState enum
 
 BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     RCLCPP_INFO(this->get_logger(), "Initializing Blimp Vision Node");
@@ -101,6 +109,13 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     } else {
         camera_timer_ = this->create_wall_timer(1ns, std::bind(&BlimpVision::camera_timer_callback, this));
     }
+
+    z_estimation_timer = this->create_wall_timer(1ns, std::bind(&BlimpVision::z_estimation_timer_callback, this));
+
+    goal_color_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("goal_color", 1, std::bind(&BlimpVision::goal_color_subscription_callback, this, _1));
+    state_machine_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("state_machine", 1, std::bind(&BlimpVision::state_machine_subscription_callback, this, _1));
+
+    startTime_ = this->now();
 }
 
 BlimpVision::~BlimpVision() {
@@ -136,15 +151,44 @@ void BlimpVision::camera_timer_callback() {
     cv::imshow("Left Rect", left_rect);
     cv::imshow("Right Rect", right_rect);
 
-    // autoState mode = searching;
-    // goalType goalColor = orange;
-    // computer_vision_.update(left_rect, right_rect, mode, goalColor);
-
-    // std::vector<std::vector<float>> target;
-    // target = computer_vision_.getTargetBalloon();
+    if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
+        float ball_x, ball_y;
+        bool success = computer_vision_.estimateBallLeftXY(left_rect, right_rect, ball_x, ball_y);
+        // PUBLISH ball_x, ball_y, ball_z_
+    } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
+        float goal_x, goal_y;
+        bool success = computer_vision_.estimateGoalLeftXY(left_rect, right_rect, goal_x, goal_y);
+        // PUBLISH goal_x, goal_y, goal_z_
+    }
 
     cv::waitKey(1);
     frame_count_++;
+}
+
+void BlimpVision::z_estimation_timer_callback() {
+    if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
+        float ball_z;
+        bool success = computer_vision_.estimateBallZ(ball_z);
+    } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
+        float goal_z;
+        bool success = computer_vision_.estimateGoalZ(goal_z);
+    }
+}
+
+void BlimpVision::goal_color_subscription_callback(const std_msgs::msg::Int64::SharedPtr goal_color_msg){
+    try{
+        goal_color_ = static_cast<goalType>(goal_color_msg->data);
+    }catch(const std::exception){
+        cout << "Recieved invalid goal_color value (" << goal_color_msg->data << ")." << endl;
+    }
+}
+
+void BlimpVision::state_machine_subscription_callback(const std_msgs::msg::Int64::SharedPtr state_machine_msg){
+    try{
+        state_machine_ = static_cast<autoState>(state_machine_msg->data);
+    }catch(const std::exception){
+        cout << "Recieved invalid state_machine value (" << state_machine_msg->data << ")." << endl;
+    }
 }
 
 void BlimpVision::compressed_image_callback(const sensor_msgs::msg::CompressedImage::SharedPtr comp_img_msg) {

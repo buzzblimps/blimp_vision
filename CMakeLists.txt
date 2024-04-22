@@ -23,6 +23,7 @@ add_executable(
     src/ComputerVision.cpp
     include/BlimpVision.hpp
     include/ComputerVision.hpp
+    include/Benchmarker.hpp
 )
 
 ament_target_dependencies(

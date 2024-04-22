@@ -52,37 +52,14 @@ void ComputerVision::init(const sensor_msgs::msg::CameraInfo &cinfo_left, const 
     ballCorrect_R_ = Mat::zeros(cv::Size(CAMERA_WIDTH, CAMERA_HEIGHT), 16);
     ballCorrect_L_.setTo(B_CORRECTION);
     ballCorrect_R_.setTo(B_CORRECTION);
+
+    // Generate ball morphology kernel
+    ball_kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
 }
-
-// void ComputerVision::readCalibrationFiles(){
-//     // Check that program is still running
-// 	if(!programData->program_running){
-// 		fprintf(stdout, "ComputerVision trying to read calibration files with program_running=false. Stopping.\n");
-// 		return;
-// 	}
-
-//     if(programData->verboseMode) fprintf(stdout, "Reading Stereo Camera Parameters.\n");
-//     string stereo_cal_path = srcDir + "/" + STEREO_CAL_FILENAME;
-//     if(programData->verboseMode) fprintf(stdout, "Stereo Camera Parameter File Path: %s\n", stereo_cal_path.c_str());
-// 	FileStorage cv_file2 = FileStorage(stereo_cal_path, FileStorage::READ);
-// 	if(!cv_file2.isOpened()){
-//         fprintf(stderr, "Error: Failed to open stereo parameter file.\n");
-//         programData->program_running = false;
-//         return;
-//     }
-
-//     cv_file2["Left_Stereo_Map_x"] >> Left_Stereo_Map1;
-// 	cv_file2["Left_Stereo_Map_y"] >> Left_Stereo_Map2;
-// 	cv_file2["Right_Stereo_Map_x"] >> Right_Stereo_Map1;
-// 	cv_file2["Right_Stereo_Map_y"] >> Right_Stereo_Map2;
-// 	cv_file2["Q"] >> Q;
-// 	cv_file2.release();
-
-//     if(programData->verboseMode) fprintf(stdout, "Read complete.\n");
-// }
 
 // Big image processing function
 void ComputerVision::update(Mat imgL, Mat imgR, autoState mode, goalType goalColor) {
+
     left_correct_ = imgL;
     right_correct_ = imgR;
 
@@ -104,6 +81,7 @@ void ComputerVision::update(Mat imgL, Mat imgR, autoState mode, goalType goalCol
     goals.clear();
     if (mode == searching || mode == approach || mode == catching) {
         // Ball Detection
+        benchmarker.benchmark("Pre-getBall");
         bool detectedBall = getBall(Ballx, Bally, Ballz, ballArea, imgL, imgR);
 
         if(detectedBall) {
@@ -134,6 +112,261 @@ void ComputerVision::update(Mat imgL, Mat imgR, autoState mode, goalType goalCol
         //goal.push_back(goalAngle);
         goals.push_back(goal);
     }
+    benchmarker.benchmarkPrint();
+}
+
+bool ComputerVision::estimateBallLeftXY(Mat rectified_left, Mat rectified_right, float &ball_x, float &ball_y){
+    // color vision left
+    // mask left
+    // min enclosing circle left
+    // x,y estimation
+    // store left/right rectification, left min circle
+
+    // Apply color correction
+    Mat color_corrected_left;
+    add(rectified_left, ballCorrect_L_, color_corrected_left);
+
+    // Convert to HSV
+    Mat HSV_left;
+    cvtColor(color_corrected_left, HSV_left, cv::COLOR_BGR2HSV);
+
+    // Generate mask
+    Mat mask_left;
+    inRange(HSV_left, B_MIN, B_MAX, mask_left);
+    imshow("mask_left", mask_left);
+
+    // Morphology (for noise reduction)
+    Mat mask_cleaned_left;
+    morphologyEx(mask_left, mask_cleaned_left, MORPH_CLOSE, ball_kernel);
+    morphologyEx(mask_cleaned_left, mask_cleaned_left, MORPH_OPEN, ball_kernel);
+
+    // Find contours
+    vector<vector<Point>> contours_left;
+    cv::findContours(mask_cleaned_left, contours_left, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    // Find largest contour
+    vector<Point> largest_contour_left;
+    float area_largest_contour_left = 0;
+    int index_largest_contour_left = 0;
+
+    for (unsigned int i = 0; i < contours_left.size(); i++) {
+        double area = contourArea(contours_left[i]);
+        if (area > area_largest_contour_left) {
+            area_largest_contour_left = area;
+            largest_contour_left = contours_left[i];
+            index_largest_contour_left = i;
+        }
+    }
+
+    // Check if largest contour is too small
+    if (area_largest_contour_left < 50){
+        // No detection
+        detected_ball_ = false;
+        return false;
+    }
+
+    // Draw largest contour
+    Mat rectified_with_contours_left;
+    rectified_left.copyTo(rectified_with_contours_left);
+    drawContours(rectified_with_contours_left, contours_left, index_largest_contour_left, Scalar(255, 255, 255), -1);
+    imshow("Left Rectified with Contour", rectified_with_contours_left);
+
+    // Find minimum enclosing circle
+    Point2f min_circle_point_left;
+    float min_circle_radius_left;
+    cv::minEnclosingCircle(largest_contour_left, min_circle_point_left, min_circle_radius_left);
+
+    // Prepare return values
+    ball_x = min_circle_point_left.x;
+    ball_y = min_circle_point_left.y;
+
+    // Store variables (multi-threading)
+    rectified_left.copyTo(rectified_left_);
+    rectified_right.copyTo(rectified_right_);
+    min_circle_point_left_ = min_circle_point_left;
+    min_circle_radius_left_ = min_circle_radius_left;
+
+    detected_ball_ = true;
+    return true;
+}
+
+bool ComputerVision::estimateBallZ(float &ball_z){
+    if(!detected_ball_){
+        ball_z = 1000;
+        return false;
+    }
+
+    // Import variables (multi-threading)
+    Mat rectified_left, rectified_right;
+    rectified_left_.copyTo(rectified_left);
+    rectified_right_.copyTo(rectified_right);
+    Point2f min_circle_point_left = min_circle_point_left_;
+    float min_circle_radius_left = min_circle_radius_left_;
+
+    // Apply color correction
+    Mat color_corrected_right;
+    add(rectified_right, ballCorrect_R_, color_corrected_right);
+
+    // Convert to HSV
+    Mat HSV_right;
+    cvtColor(color_corrected_right, HSV_right, cv::COLOR_BGR2HSV);
+
+    // Generate mask
+    Mat mask_right;
+    inRange(HSV_right, B_MIN, B_MAX, mask_right);
+    imshow("mask_right", mask_right);
+
+    // Morphology (for noise reduction)
+    Mat mask_cleaned_right;
+    morphologyEx(mask_right, mask_cleaned_right, MORPH_CLOSE, ball_kernel);
+    morphologyEx(mask_cleaned_right, mask_cleaned_right, MORPH_OPEN, ball_kernel);
+
+    // Find contours
+    vector<vector<Point>> contours_right;
+    cv::findContours(mask_cleaned_right, contours_right, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    // Find largest contour
+    vector<Point> largest_contour_right;
+    float area_largest_contour_right = 0;
+    int index_largest_contour_right = 0;
+
+    for (unsigned int i = 0; i < contours_right.size(); i++) {
+        double area = contourArea(contours_right[i]);
+        if (area > area_largest_contour_right) {
+            area_largest_contour_right = area;
+            largest_contour_right = contours_right[i];
+            index_largest_contour_right = i;
+        }
+    }
+
+    // Check if largest contour is too small
+    if (area_largest_contour_right < 50){
+        // No detection
+        return false;
+    }
+
+    // Find minimum enclosing circle
+    Point2f min_circle_point_right;
+    float min_circle_radius_right;
+    cv::minEnclosingCircle(largest_contour_right, min_circle_point_right, min_circle_radius_right);
+
+    // Generate circular masks
+    Mat mask_circle_left = Mat::zeros(rectified_left.size(), CV_8UC1);
+    Mat mask_circle_right = Mat::zeros(rectified_right.size(), CV_8UC1);
+
+    float radius_mask_circle_left = min_circle_radius_left + 10;
+    float radius_mask_circle_right = min_circle_radius_right + 10;
+
+    circle(mask_circle_left, min_circle_point_left, radius_mask_circle_left, Scalar(255, 255, 255), -1);
+    circle(mask_circle_right, min_circle_point_right, radius_mask_circle_right, Scalar(255, 255, 255), -1);
+
+    threshold(mask_circle_left, mask_circle_left, 127, 255, THRESH_BINARY);
+    threshold(mask_circle_right, mask_circle_right, 127, 255, THRESH_BINARY);
+
+    // Mask rectified image for visualization
+    Mat circle_masked_left, circle_masked_right;
+    cv::bitwise_and(rectified_left,  rectified_left,  circle_masked_left, mask_circle_left);
+    cv::bitwise_and(rectified_right, rectified_right, circle_masked_right, mask_circle_right);
+    // imshow("Left Circle Masked", circle_masked_left);
+
+    try {
+        std::vector<KeyPoint> keypoints_left, keypoints_right;
+        cv::Mat descriptors_left, descriptors_right;
+
+        // Detect keypoints in the image
+        orb_->detect(rectified_left, keypoints_left, mask_circle_left);
+        orb_->detect(rectified_right, keypoints_right, mask_circle_right);
+
+        // Filter keypoints
+        std::vector<KeyPoint> keypoints_filt_left;
+        std::vector<KeyPoint> keypoints_filt_right;
+        if(false){
+            for (const auto& keypoint : keypoints_left) {
+                //Calculate distance of keypoint from circle center
+                float dist = sqrt(pow(keypoint.pt.x - min_circle_point_left.x, 2) + pow(keypoint.pt.y - min_circle_point_left.y, 2));
+                if (dist < radius_mask_circle_left) {
+                    keypoints_filt_left.push_back(keypoint);
+                }
+            }
+
+            for (const auto& keypoint : keypoints_right) {
+                //Calculate distance of keypoint from circle center
+                float dist = sqrt(pow(keypoint.pt.x - min_circle_point_right.x, 2) + pow(keypoint.pt.y - min_circle_point_right.y, 2));
+                if (dist < radius_mask_circle_right) {
+                    keypoints_filt_right.push_back(keypoint);
+                }
+            }
+            cout << "Number of keypoints before filtering: " << keypoints_left.size() << endl;
+            cout << "Number of keypoints after filtering: " << keypoints_filt_left.size() << endl;
+        }else{
+            keypoints_filt_left = keypoints_left;
+            keypoints_filt_right = keypoints_right;
+        }
+
+        // Compute keypoint matches
+        orb_->compute(circle_masked_left, keypoints_filt_left, descriptors_left);
+        orb_->compute(circle_masked_right, keypoints_filt_right, descriptors_right);
+
+        // Match descriptors using Brute-Force matcher
+        BFMatcher matcher(NORM_HAMMING);
+        vector<vector<DMatch>> knn_matches;
+        matcher.knnMatch(descriptors_left, descriptors_right, knn_matches, 2);
+
+        // Filter matches using ratio test
+        const float ratio_thresh = 0.8f;
+        vector<DMatch> good_matches;
+        for (size_t i = 0; i < knn_matches.size(); i++) {
+            if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance) {
+              good_matches.push_back(knn_matches[i][0]);
+            }
+        }
+
+        // Draw matches
+        Mat img_matches;
+        drawMatches(circle_masked_left, keypoints_filt_left, circle_masked_right, keypoints_filt_right, knn_matches, img_matches);
+        imshow("ORB Matches", img_matches);
+
+        // Calculate average distance of all matched points
+        double avg_distance = 0.0;
+        for (const auto& matches : knn_matches) {
+            if (matches.size() < 2) continue;  // Skip if not enough matches
+            const auto& kp_L = keypoints_filt_left[matches[0].queryIdx];
+            const auto& kp_R1 = keypoints_filt_right[matches[0].trainIdx];
+            const auto& kp_R2 = keypoints_filt_right[matches[1].trainIdx];
+            double disparity = abs(kp_L.pt.x - kp_R1.pt.x);
+            double ratio = matches[0].distance / matches[1].distance;
+            if (ratio < ratio_thresh) {
+                double distance = (F * BASELINE) / disparity;
+                avg_distance += distance;
+            }
+        }
+        avg_distance /= good_matches.size();
+        cout << "Distance : " << avg_distance << endl;
+
+        // Add RANSAC maybe?
+
+        // Return values
+        if(!isnan(avg_distance)){
+            ball_z = avg_distance;
+            return true;
+        }
+
+    } catch (const cv::Exception){
+        cout << "Failed" << endl;
+    }
+
+    ball_z = 1000;
+    return false;
+}
+
+bool ComputerVision::estimateGoalLeftXY(Mat rectified_left, Mat rectified_right, float &goal_x, float &goal_y){
+    cout << "Not implemented" << endl;
+    return false;
+}
+
+bool ComputerVision::estimateGoalZ(float &goal_z){
+    cout << "Not implemented" << endl;
+    return false;
 }
 
 vector<vector<float>> ComputerVision::getTargetBalloon() {
@@ -192,6 +425,7 @@ vector<Point> ComputerVision::scaleContour(vector<Point> contour, float scale) {
 }
 
 bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &left_rect, Mat &right_rect) {
+    benchmarker.benchmark("Begin-getBall");
 
     //Uncomment for disparity testing
     //Convert left and right to grayscale
@@ -247,7 +481,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     inRange(left_HSV, B_MIN, B_MAX, bMask_L);
     inRange(right_HSV, B_MIN, B_MAX, bMask_R);
 
-    // imshow("bMask_L", bMask_L);
+    imshow("bMask_L", bMask_L);
 
     //Noise reduction
     Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
@@ -267,6 +501,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     //imshow("bMask_R", bMask_R_cleaned);
 
     //Find Largest Contour (Largest Ball)
+    benchmarker.benchmark("Pre-contours");
+
     vector<vector<Point> > contoursL;
     cv::findContours(bMask_L_cleaned, contoursL, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
@@ -282,6 +518,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
             index_L = i;
         }
     }
+
 
     std::vector<std::vector<cv::Point>> contoursR;
     cv::findContours(bMask_R_cleaned, contoursR, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
@@ -308,6 +545,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         return false;
     }
 
+    benchmarker.benchmark("5");
+
     // Debug draw contours
     //namedWindow("contL");
     Mat imgLcountours;
@@ -332,6 +571,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     float radius_L, radius_R;
     cv::minEnclosingCircle(largestContour_L, p_L, radius_L);
     cv::minEnclosingCircle(largestContour_R, p_R, radius_R);
+    // RETURN x,y data
 
     // Mat imgLCircle;
     // left_rect.copyTo(imgLCircle);
@@ -371,14 +611,18 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     // imshow("maskL", masked_imgL);
     // imshow("maskR", masked_imgR);
     // float mask_radius = 0;
+
+    benchmarker.benchmark("Pre-try");
     
     try {
         std::vector<KeyPoint> keypointsL, keypointsR;
         cv::Mat descriptorsL, descriptorsR;
 
         // Detect keypoints in the image
+        benchmarker.benchmark("Pre-orb-detect");
         orb_->detect(left_rect, keypointsL, maskL);
         orb_->detect(right_rect, keypointsR, maskR);
+        benchmarker.benchmark("Post-orb-detect");
 
         //Filter keypoints
         // vector<KeyPoint> kp_filt_L;
@@ -407,13 +651,17 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         //cout << "Number of keypoints after filtering: " << kp_filt_L.size() << endl;
 
         //Compute matches
+        benchmarker.benchmark("Pre-orb-compute");
         orb_->compute(masked_imgL, kp_filt_L, descriptorsL);
         orb_->compute(masked_imgR, kp_filt_R, descriptorsR);
+        benchmarker.benchmark("Post-orb-compute");
 
         //Match descriptors using Brute-Force matcher
         BFMatcher matcher(NORM_HAMMING);
         vector<vector<DMatch>> knn_matches;
         matcher.knnMatch(descriptorsL, descriptorsR, knn_matches, 2);
+
+        benchmarker.benchmark("Post-matching");
 
         // Filter matches using ratio test
         const float ratio_thresh = 0.8f;
@@ -431,7 +679,9 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         namedWindow("ORB Matches");
         imshow("ORB Matches", img_matches);
 
-        return true;
+        benchmarker.benchmark("Post-orb");
+
+        // return true;
 
         //waitKey(1);
         // piComm->setStreamFrame(img_matches, "Matches");
@@ -452,6 +702,9 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         }
 
         avg_distance /= good_matches.size();
+        cout << "Distance : " << avg_distance << endl;
+
+        benchmarker.benchmark("End");
 
         // Add RANSAC maybe?
 

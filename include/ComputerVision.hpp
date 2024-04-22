@@ -10,6 +10,8 @@
 #include <opencv2/ximgproc.hpp>
 #include <vector>
 
+#include "Benchmarker.hpp"
+
 using namespace std;
 using namespace cv;
 
@@ -139,35 +141,54 @@ class ComputerVision {
         // Goal detection
         double pixelDensityL = 0.2;
         double pixelDensityR = 0.2;
-        Mat output,output_norm,output_norm_scaled;
+        Mat output, output_norm, output_norm_scaled;
 
         vector<Point> scaleContour(vector<Point> contour, float scale);
 
         string srcDir;
 
-        void getFrames(Mat &imgL, Mat &imgR);
         bool getBall(float &X, float &Y, float &Z, float &area, Mat &imgL, Mat &imgR);
         void getGoal(float &X, float &Y, float &Z, float &area, float &angle, Mat imgL, Mat imgR);
 
         // Store left camera's corrected view
         cv::Mat left_correct_, right_correct_;
 
-        //Stereo disparity matrix
+        // Stereo disparity matrix
         cv::Matx44d Q_;
 
-        //Ball color correction matrices
+        // Ball color correction matrices
         cv::Mat ballCorrect_L_, ballCorrect_R_;
+
+        // Ball morphology kernel
+        cv::Mat ball_kernel;
 
         // Perform ORB feature extraction and matching
         Ptr<ORB> orb_;
 
         // Ptr<FastFeatureDetector> fast_;
 
+        Benchmarker benchmarker;
+
+        // Variables needed for ball Z estimation
+        bool detected_ball_ = false;
+        cv::Mat rectified_left_, rectified_right_;
+        cv::Point2f min_circle_point_left_;
+        float min_circle_radius_left_;
+
+        // Variable for latched z estimation
+        float ball_z_, goal_z_;
+
     public:
         void init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right);
 
-        // void readCalibrationFiles();
         void update(Mat imgL, Mat imgR, autoState mode, goalType goalColor); // Big image processing function
+        
+        bool estimateBallLeftXY(Mat rectified_left, Mat rectified_right, float &ball_x, float &ball_y);
+        bool estimateBallZ(float &ball_z);
+
+        bool estimateGoalLeftXY(Mat rectified_left, Mat rectified_right, float &goal_x, float &goal_y);
+        bool estimateGoalZ(float &goal_z);        
+        
         vector<vector<float>> getTargetBalloon();
         vector<vector<float>> getTargetGoal();
         int getQuad();
