@@ -110,7 +110,7 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
         camera_timer_ = this->create_wall_timer(1ns, std::bind(&BlimpVision::camera_timer_callback, this));
     }
 
-    z_estimation_timer = this->create_wall_timer(1ns, std::bind(&BlimpVision::z_estimation_timer_callback, this));
+    z_estimation_timer = this->create_wall_timer(0.25s, std::bind(&BlimpVision::z_estimation_timer_callback, this));
 
     goal_color_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("goal_color", 1, std::bind(&BlimpVision::goal_color_subscription_callback, this, _1));
     state_machine_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("state_machine", 1, std::bind(&BlimpVision::state_machine_subscription_callback, this, _1));
@@ -154,6 +154,10 @@ void BlimpVision::camera_timer_callback() {
     if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
         float ball_x, ball_y;
         bool success = computer_vision_.estimateBallLeftXY(left_rect, right_rect, ball_x, ball_y);
+        Mat left_rect_ball;
+        left_rect.copyTo(left_rect_ball);
+        circle(left_rect_ball, Point2f(ball_x, ball_y), 10, Scalar(0, 0, 255), -1);
+        imshow("Left Rect Circle", left_rect_ball);
         // PUBLISH ball_x, ball_y, ball_z_
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
         float goal_x, goal_y;
@@ -169,6 +173,7 @@ void BlimpVision::z_estimation_timer_callback() {
     if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
         float ball_z;
         bool success = computer_vision_.estimateBallZ(ball_z);
+        cout << "ball_z: " << ball_z << endl;
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
         float goal_z;
         bool success = computer_vision_.estimateGoalZ(goal_z);

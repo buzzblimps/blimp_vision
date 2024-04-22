@@ -172,8 +172,10 @@ class ComputerVision {
         // Variables needed for ball Z estimation
         bool detected_ball_ = false;
         cv::Mat rectified_left_, rectified_right_;
-        cv::Point2f min_circle_point_left_;
-        float min_circle_radius_left_;
+        // cv::Point2f min_circle_point_left_;
+        // float min_circle_radius_left_;
+        vector<vector<Point>> contours_left_;
+        int index_largest_contour_left_ = 0;
 
         // Variable for latched z estimation
         float ball_z_, goal_z_;

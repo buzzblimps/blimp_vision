@@ -183,8 +183,10 @@ bool ComputerVision::estimateBallLeftXY(Mat rectified_left, Mat rectified_right,
     // Store variables (multi-threading)
     rectified_left.copyTo(rectified_left_);
     rectified_right.copyTo(rectified_right_);
-    min_circle_point_left_ = min_circle_point_left;
-    min_circle_radius_left_ = min_circle_radius_left;
+    // min_circle_point_left_ = min_circle_point_left;
+    // min_circle_radius_left_ = min_circle_radius_left;
+    contours_left_ = contours_left;
+    index_largest_contour_left_ = index_largest_contour_left;
 
     detected_ball_ = true;
     return true;
@@ -200,8 +202,11 @@ bool ComputerVision::estimateBallZ(float &ball_z){
     Mat rectified_left, rectified_right;
     rectified_left_.copyTo(rectified_left);
     rectified_right_.copyTo(rectified_right);
-    Point2f min_circle_point_left = min_circle_point_left_;
-    float min_circle_radius_left = min_circle_radius_left_;
+    // Point2f min_circle_point_left = min_circle_point_left_;
+    // float min_circle_radius_left = min_circle_radius_left_;
+    vector<vector<Point>> contours_left = contours_left_;
+    int index_largest_contour_left = index_largest_contour_left_;
+
 
     // Apply color correction
     Mat color_corrected_right;
@@ -242,31 +247,38 @@ bool ComputerVision::estimateBallZ(float &ball_z){
     // Check if largest contour is too small
     if (area_largest_contour_right < 50){
         // No detection
+        ball_z = 1000;
         return false;
     }
 
+    // Generate contour mask
+    Mat mask_contour_left = Mat::zeros(rectified_left.size(), CV_8UC1);
+    Mat mask_contour_right = Mat::zeros(rectified_right.size(), CV_8UC1);
+    drawContours(mask_contour_left, contours_left, index_largest_contour_left, Scalar(255, 255, 255), -1);
+    drawContours(mask_contour_right, contours_right, index_largest_contour_right, Scalar(255, 255, 255), -1);
+
     // Find minimum enclosing circle
-    Point2f min_circle_point_right;
-    float min_circle_radius_right;
-    cv::minEnclosingCircle(largest_contour_right, min_circle_point_right, min_circle_radius_right);
+    // Point2f min_circle_point_right;
+    // float min_circle_radius_right;
+    // cv::minEnclosingCircle(largest_contour_right, min_circle_point_right, min_circle_radius_right);
 
     // Generate circular masks
-    Mat mask_circle_left = Mat::zeros(rectified_left.size(), CV_8UC1);
-    Mat mask_circle_right = Mat::zeros(rectified_right.size(), CV_8UC1);
+    // Mat mask_circle_left = Mat::zeros(rectified_left.size(), CV_8UC1);
+    // Mat mask_circle_right = Mat::zeros(rectified_right.size(), CV_8UC1);
 
-    float radius_mask_circle_left = min_circle_radius_left + 10;
-    float radius_mask_circle_right = min_circle_radius_right + 10;
+    // float radius_mask_circle_left = min_circle_radius_left + 10;
+    // float radius_mask_circle_right = min_circle_radius_right + 10;
 
-    circle(mask_circle_left, min_circle_point_left, radius_mask_circle_left, Scalar(255, 255, 255), -1);
-    circle(mask_circle_right, min_circle_point_right, radius_mask_circle_right, Scalar(255, 255, 255), -1);
+    // circle(mask_circle_left, min_circle_point_left, radius_mask_circle_left, Scalar(255, 255, 255), -1);
+    // circle(mask_circle_right, min_circle_point_right, radius_mask_circle_right, Scalar(255, 255, 255), -1);
 
-    threshold(mask_circle_left, mask_circle_left, 127, 255, THRESH_BINARY);
-    threshold(mask_circle_right, mask_circle_right, 127, 255, THRESH_BINARY);
+    // threshold(mask_circle_left, mask_circle_left, 127, 255, THRESH_BINARY);
+    // threshold(mask_circle_right, mask_circle_right, 127, 255, THRESH_BINARY);
 
     // Mask rectified image for visualization
-    Mat circle_masked_left, circle_masked_right;
-    cv::bitwise_and(rectified_left,  rectified_left,  circle_masked_left, mask_circle_left);
-    cv::bitwise_and(rectified_right, rectified_right, circle_masked_right, mask_circle_right);
+    // Mat circle_masked_left, circle_masked_right;
+    // cv::bitwise_and(rectified_left,  rectified_left,  circle_masked_left, mask_circle_left);
+    // cv::bitwise_and(rectified_right, rectified_right, circle_masked_right, mask_circle_right);
     // imshow("Left Circle Masked", circle_masked_left);
 
     try {
@@ -274,38 +286,38 @@ bool ComputerVision::estimateBallZ(float &ball_z){
         cv::Mat descriptors_left, descriptors_right;
 
         // Detect keypoints in the image
-        orb_->detect(rectified_left, keypoints_left, mask_circle_left);
-        orb_->detect(rectified_right, keypoints_right, mask_circle_right);
+        orb_->detect(rectified_left, keypoints_left, mask_contour_left);
+        orb_->detect(rectified_right, keypoints_right, mask_contour_right);
 
         // Filter keypoints
         std::vector<KeyPoint> keypoints_filt_left;
         std::vector<KeyPoint> keypoints_filt_right;
         if(false){
-            for (const auto& keypoint : keypoints_left) {
-                //Calculate distance of keypoint from circle center
-                float dist = sqrt(pow(keypoint.pt.x - min_circle_point_left.x, 2) + pow(keypoint.pt.y - min_circle_point_left.y, 2));
-                if (dist < radius_mask_circle_left) {
-                    keypoints_filt_left.push_back(keypoint);
-                }
-            }
+            // for (const auto& keypoint : keypoints_left) {
+            //     //Calculate distance of keypoint from circle center
+            //     float dist = sqrt(pow(keypoint.pt.x - min_circle_point_left.x, 2) + pow(keypoint.pt.y - min_circle_point_left.y, 2));
+            //     if (dist < radius_mask_circle_left) {
+            //         keypoints_filt_left.push_back(keypoint);
+            //     }
+            // }
 
-            for (const auto& keypoint : keypoints_right) {
-                //Calculate distance of keypoint from circle center
-                float dist = sqrt(pow(keypoint.pt.x - min_circle_point_right.x, 2) + pow(keypoint.pt.y - min_circle_point_right.y, 2));
-                if (dist < radius_mask_circle_right) {
-                    keypoints_filt_right.push_back(keypoint);
-                }
-            }
-            cout << "Number of keypoints before filtering: " << keypoints_left.size() << endl;
-            cout << "Number of keypoints after filtering: " << keypoints_filt_left.size() << endl;
+            // for (const auto& keypoint : keypoints_right) {
+            //     //Calculate distance of keypoint from circle center
+            //     float dist = sqrt(pow(keypoint.pt.x - min_circle_point_right.x, 2) + pow(keypoint.pt.y - min_circle_point_right.y, 2));
+            //     if (dist < radius_mask_circle_right) {
+            //         keypoints_filt_right.push_back(keypoint);
+            //     }
+            // }
+            // cout << "Number of keypoints before filtering: " << keypoints_left.size() << endl;
+            // cout << "Number of keypoints after filtering: " << keypoints_filt_left.size() << endl;
         }else{
             keypoints_filt_left = keypoints_left;
             keypoints_filt_right = keypoints_right;
         }
 
-        // Compute keypoint matches
-        orb_->compute(circle_masked_left, keypoints_filt_left, descriptors_left);
-        orb_->compute(circle_masked_right, keypoints_filt_right, descriptors_right);
+        // Compute descriptors
+        orb_->compute(rectified_left, keypoints_filt_left, descriptors_left);
+        orb_->compute(rectified_right, keypoints_filt_right, descriptors_right);
 
         // Match descriptors using Brute-Force matcher
         BFMatcher matcher(NORM_HAMMING);
@@ -313,40 +325,32 @@ bool ComputerVision::estimateBallZ(float &ball_z){
         matcher.knnMatch(descriptors_left, descriptors_right, knn_matches, 2);
 
         // Filter matches using ratio test
-        const float ratio_thresh = 0.8f;
-        vector<DMatch> good_matches;
-        for (size_t i = 0; i < knn_matches.size(); i++) {
-            if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance) {
-              good_matches.push_back(knn_matches[i][0]);
-            }
-        }
-
-        // Draw matches
-        Mat img_matches;
-        drawMatches(circle_masked_left, keypoints_filt_left, circle_masked_right, keypoints_filt_right, knn_matches, img_matches);
-        imshow("ORB Matches", img_matches);
-
-        // Calculate average distance of all matched points
+        const float ratio_thresh = 0.7f;
         double avg_distance = 0.0;
+        int count = 0;
+
         for (const auto& matches : knn_matches) {
             if (matches.size() < 2) continue;  // Skip if not enough matches
             const auto& kp_L = keypoints_filt_left[matches[0].queryIdx];
             const auto& kp_R1 = keypoints_filt_right[matches[0].trainIdx];
-            const auto& kp_R2 = keypoints_filt_right[matches[1].trainIdx];
-            double disparity = abs(kp_L.pt.x - kp_R1.pt.x);
+
+            // const auto& kp_R2 = kp_filt_R[matches[1].trainIdx];
+            double disparity = kp_L.pt.x - kp_R1.pt.x;
+            if (disparity < 0) {
+                continue;
+            }
+
             double ratio = matches[0].distance / matches[1].distance;
             if (ratio < ratio_thresh) {
-                double distance = (F * BASELINE) / disparity;
+                double distance = model_.getZ(disparity);
                 avg_distance += distance;
+                count ++;
             }
         }
-        avg_distance /= good_matches.size();
-        cout << "Distance : " << avg_distance << endl;
-
-        // Add RANSAC maybe?
+        avg_distance /= count;
 
         // Return values
-        if(!isnan(avg_distance)){
+        if(!isnan(avg_distance) && abs(avg_distance) < 1000){
             ball_z = avg_distance;
             return true;
         }
