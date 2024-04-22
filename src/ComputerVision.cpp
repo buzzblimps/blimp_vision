@@ -42,6 +42,11 @@ void ComputerVision::init(const sensor_msgs::msg::CameraInfo &cinfo_left, const 
     // wls_filter_->setLambda(LAMBDA);
     // wls_filter_->setSigmaColor(SIGMA);
 
+    int num_features = 20;
+    orb_ = ORB::create(num_features);
+
+    // fast_ = FastFeatureDetector::create(80, true);
+
     //Set the ball correction matrices
     ballCorrect_L_ = Mat::zeros(cv::Size(CAMERA_WIDTH, CAMERA_HEIGHT), 16);
     ballCorrect_R_ = Mat::zeros(cv::Size(CAMERA_WIDTH, CAMERA_HEIGHT), 16);
@@ -190,31 +195,31 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
     //Uncomment for disparity testing
     //Convert left and right to grayscale
-    cv::Mat left_rect_mono, right_rect_mono;
-    cv::cvtColor(left_rect,  left_rect_mono,  cv::COLOR_BGR2GRAY);
-    cv::cvtColor(right_rect, right_rect_mono, cv::COLOR_BGR2GRAY);
+    // cv::Mat left_rect_mono, right_rect_mono;
+    // cv::cvtColor(left_rect,  left_rect_mono,  cv::COLOR_BGR2GRAY);
+    // cv::cvtColor(right_rect, right_rect_mono, cv::COLOR_BGR2GRAY);
 
-    imshow("Left Mono",  left_rect_mono);
-    imshow("Right Mono", right_rect_mono);
+    // imshow("Left Mono",  left_rect_mono);
+    // imshow("Right Mono", right_rect_mono);
 
-    //Compute stereo disparities and weighted least squares filter
-    cv::Mat left_disp, right_disp;
-    left_matcher_->compute(left_rect_mono, right_rect_mono, left_disp);
-    right_matcher_->compute(right_rect_mono, left_rect_mono, right_disp);
+    // //Compute stereo disparities and weighted least squares filter
+    // cv::Mat left_disp, right_disp;
+    // left_matcher_->compute(left_rect_mono, right_rect_mono, left_disp);
+    // right_matcher_->compute(right_rect_mono, left_rect_mono, right_disp);
 
-    cv::Mat filtered_disp;
-    wls_filter_->filter(left_disp, left_rect_mono, filtered_disp, right_disp);
-    // std::cout << left_disp << std::endl;
+    // cv::Mat filtered_disp;
+    // wls_filter_->filter(left_disp, left_rect_mono, filtered_disp, right_disp);
+    // // std::cout << left_disp << std::endl;
 
-    double min_val, max_val;
-    cv::minMaxLoc(filtered_disp, &min_val, &max_val);
-    Mat disparity_vis;
-    filtered_disp.convertTo(disparity_vis, CV_8U, 255.0 / (max_val - min_val), -min_val * 255.0 / (max_val - min_val));
+    // double min_val, max_val;
+    // cv::minMaxLoc(filtered_disp, &min_val, &max_val);
+    // Mat disparity_vis;
+    // filtered_disp.convertTo(disparity_vis, CV_8U, 255.0 / (max_val - min_val), -min_val * 255.0 / (max_val - min_val));
 
-    namedWindow("Filtered Disparity");
-    imshow("Filtered Disparity", disparity_vis);
+    // namedWindow("Filtered Disparity");
+    // imshow("Filtered Disparity", disparity_vis);
 
-    return true;
+    // return true;
 
     //Apply correction
     Mat ball_CL, ball_CR;
@@ -263,7 +268,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
     //Find Largest Contour (Largest Ball)
     vector<vector<Point> > contoursL;
-    findContours(bMask_L_cleaned, contoursL, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    cv::findContours(bMask_L_cleaned, contoursL, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
     vector<Point> largestContour_L;
     float largestArea_L = 0;
@@ -278,8 +283,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         }
     }
 
-    vector<vector<Point> > contoursR;
-    findContours(bMask_R_cleaned, contoursR, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    std::vector<std::vector<cv::Point>> contoursR;
+    cv::findContours(bMask_R_cleaned, contoursR, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
     vector<Point> largestContour_R;
     float largestArea_R = 0;
@@ -299,6 +304,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         largestContour_L.clear();
         largestContour_R.clear();
 
+        //No detection
         return false;
     }
 
@@ -307,7 +313,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     Mat imgLcountours;
     left_rect.copyTo(imgLcountours);
     drawContours(imgLcountours, contoursL, index_L, Scalar(255, 255, 255), -1);
-    imshow("imgLcountours", imgLcountours);
+    // imshow("imgLcountours", imgLcountours);
 
     //piComm->setStreamFrame(imgL, "Draw Contours");
 
@@ -316,29 +322,42 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     //imshow("contR", imgR);
 
     // Center detection with blob centroid
-    Moments m_L = moments(largestContour_L, true);
-    Point p_L(m_L.m10/m_L.m00, m_L.m01/m_L.m00);
+    // Moments m_L = moments(largestContour_L, true);
+    // Point p_L(m_L.m10/m_L.m00, m_L.m01/m_L.m00);
 
-    //cout << largestArea_R << endl;
-    //cout << largestArea_L << endl;
+    // Moments m_R = moments(largestContour_R, true);
+    // Point p_R(m_R.m10/m_R.m00, m_R.m01/m_R.m00);
 
-    Moments m_R = moments(largestContour_R, true);
-    Point p_R(m_R.m10/m_R.m00, m_R.m01/m_R.m00);
+    Point2f p_L, p_R;
+    float radius_L, radius_R;
+    cv::minEnclosingCircle(largestContour_L, p_L, radius_L);
+    cv::minEnclosingCircle(largestContour_R, p_R, radius_R);
 
-    // Reveal area around chosen point in original image
+    // Mat imgLCircle;
+    // left_rect.copyTo(imgLCircle);
+    // circle(imgLCircle, p_L, radius_L, Scalar(255, 0, 255), 2);
+    // imshow("imgLCircle", imgLCircle);
+
+    // Mat imgRCircle;
+    // right_rect.copyTo(imgRCircle);
+    // circle(imgRCircle, p_R, radius_R, Scalar(255, 0, 255), 2);
+    // imshow("imgRCircle", imgRCircle);
+
+    // return true;
+
+    //Reveal area around chosen point in original image
     Mat maskL = Mat::zeros(left_rect.size(), CV_8UC1);
     Mat maskR = Mat::zeros(right_rect.size(), CV_8UC1);
 
-    // Create Circle masks
-    int mask_radius = 50;
-    // int radius = 300;
+    float mask_radius_L = radius_L + 10;
+    float mask_radius_R = radius_R + 10;
 
-    circle(maskL, p_L, mask_radius, Scalar(255, 255, 255), -1);
-    circle(maskR, p_R, mask_radius, Scalar(255, 255, 255), -1);
+    circle(maskL, p_L, mask_radius_L, Scalar(255, 255, 255), -1);
+    circle(maskR, p_R, mask_radius_R, Scalar(255, 255, 255), -1);
 
-    Mat imgLCircle;
-    left_rect.copyTo(imgLCircle);
-    circle(imgLCircle, p_L, 50, Scalar(0,0,0), -1);
+    // Mat imgLCircle;
+    // left_rect.copyTo(imgLCircle);
+    // circle(imgLCircle, p_L, 50, Scalar(0,0,0), -1);
     // imshow("imgLCircle", imgLCircle);
 
     threshold(maskL, maskL, 127, 255, THRESH_BINARY);
@@ -346,54 +365,52 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
     // Apply mask
     Mat masked_imgL, masked_imgR;
-    bitwise_and(left_rect,  left_rect,  masked_imgL, maskL);
-    bitwise_and(right_rect, right_rect, masked_imgR, maskR);
+    cv::bitwise_and(left_rect,  left_rect,  masked_imgL, maskL);
+    cv::bitwise_and(right_rect, right_rect, masked_imgR, maskR);
+
+    // imshow("maskL", masked_imgL);
+    // imshow("maskR", masked_imgR);
+    // float mask_radius = 0;
     
     try {
-        // Perform ORB feature extraction and matching
-        int num_features = 25;
-        Ptr<ORB> orb = ORB::create(num_features);
-
-        vector<KeyPoint> keypointsL, keypointsR;
-        Mat descriptorsL, descriptorsR;
+        std::vector<KeyPoint> keypointsL, keypointsR;
+        cv::Mat descriptorsL, descriptorsR;
 
         // Detect keypoints in the image
-        orb->detect(masked_imgL, keypointsL);
-        orb->detect(masked_imgR, keypointsR);
-
-        //Define radius
-        // float radius = 15.0f;
+        orb_->detect(left_rect, keypointsL, maskL);
+        orb_->detect(right_rect, keypointsR, maskR);
 
         //Filter keypoints
-        vector<KeyPoint> kp_filt_L;
-        for (const auto& k : keypointsL) {
-            //Calculate Float
-            float dist = sqrt(pow(k.pt.x - p_L.x, 2) + pow(k.pt.y - p_L.y, 2));
+        // vector<KeyPoint> kp_filt_L;
+        // for (const auto& k : keypointsL) {
+        //     //Calculate Float
+        //     float dist = sqrt(pow(k.pt.x - p_L.x, 2) + pow(k.pt.y - p_L.y, 2));
+        //     if (dist < mask_radius_L) {
+        //         kp_filt_L.push_back(k);
+        //     }
+        // }
 
-            if (dist < mask_radius) {
-                kp_filt_L.push_back(k);
-            }
-        }
+        // vector<KeyPoint> kp_filt_R;
+        // for (const auto& k : keypointsR) {
+        //     //Calculate Float
+        //     float dist = sqrt(pow(k.pt.x - p_R.x, 2) + pow(k.pt.y - p_R.y, 2));
+        //     if (dist < mask_radius_R) {
+        //         kp_filt_R.push_back(k);
+        //     }
+        // }
 
-        vector<KeyPoint> kp_filt_R;
-        for (const auto& k : keypointsR) {
-            //Calculate Float
-            float dist = sqrt(pow(k.pt.x - p_R.x, 2) + pow(k.pt.y - p_R.y, 2));
-
-            if (dist < mask_radius) {
-                kp_filt_R.push_back(k);
-            }
-        }
+        std::vector<KeyPoint> kp_filt_L = keypointsL;
+        std::vector<KeyPoint> kp_filt_R = keypointsR;
 
         //DEBUG: Filtering
         //cout << "Number of keypoints before filtering: " << keypointsL.size() << endl;
         //cout << "Number of keypoints after filtering: " << kp_filt_L.size() << endl;
 
         //Compute matches
-        orb->compute(masked_imgL, kp_filt_L, descriptorsL);
-        orb->compute(masked_imgR, kp_filt_R, descriptorsR);
+        orb_->compute(masked_imgL, kp_filt_L, descriptorsL);
+        orb_->compute(masked_imgR, kp_filt_R, descriptorsR);
 
-        // Match descriptors using Brute-Force matcher
+        //Match descriptors using Brute-Force matcher
         BFMatcher matcher(NORM_HAMMING);
         vector<vector<DMatch>> knn_matches;
         matcher.knnMatch(descriptorsL, descriptorsR, knn_matches, 2);
@@ -413,6 +430,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
         namedWindow("ORB Matches");
         imshow("ORB Matches", img_matches);
+
+        return true;
 
         //waitKey(1);
         // piComm->setStreamFrame(img_matches, "Matches");

@@ -25,7 +25,7 @@
 
 class BlimpVision : public rclcpp::Node {
 private:
-    // rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_subscriber_;
+    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr comp_img_subscriber_;
     rclcpp::TimerBase::SharedPtr one_hz_timer_, camera_timer_;
 
     std::shared_ptr<camera_info_manager::CameraInfoManager> cinfomgr_left_;
@@ -43,13 +43,16 @@ private:
     int rect_interpolation_;
     int frame_count_;
 
+    bool use_img_sub_;
+
     ComputerVision computer_vision_;
 
     void one_hz_timer_callback();
     void camera_timer_callback();
 
+    void compressed_image_callback(const sensor_msgs::msg::CompressedImage::SharedPtr comp_img_msg);
+
     // void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &image_msg, const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg);
-    // void compressed_image_callback(const sensor_msgs::msg::CompressedImage::SharedPtr comp_img_msg);
     // void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr &image_msg);
 public:
     BlimpVision();

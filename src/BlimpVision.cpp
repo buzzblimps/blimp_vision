@@ -6,6 +6,9 @@ using namespace std::chrono_literals;
 BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     RCLCPP_INFO(this->get_logger(), "Initializing Blimp Vision Node");
 
+    this->declare_parameter<bool>("use_img_sub", false);
+    use_img_sub_ = this->get_parameter("use_img_sub").as_bool();
+
     //Load camera configuration
     this->declare_parameter<std::string>("video_device", "/dev/video0");
     this->declare_parameter<int>("image_width", 2560);
@@ -90,7 +93,12 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_);
 
     one_hz_timer_ = this->create_wall_timer(1000ms, std::bind(&BlimpVision::one_hz_timer_callback, this));
-    camera_timer_ = this->create_wall_timer(1ns, std::bind(&BlimpVision::camera_timer_callback, this));
+
+    if (use_img_sub_) {
+        comp_img_subscriber_ = this->create_subscription<sensor_msgs::msg::CompressedImage>("image_raw/compressed", 1, std::bind(&BlimpVision::compressed_image_callback, this, _1));
+    } else {
+        camera_timer_ = this->create_wall_timer(1ns, std::bind(&BlimpVision::camera_timer_callback, this));
+    }
 }
 
 BlimpVision::~BlimpVision() {
@@ -131,7 +139,9 @@ void BlimpVision::camera_timer_callback() {
     target = computer_vision_.getTargetBalloon();
 
     cv::waitKey(1);
-
     frame_count_++;
 }
 
+void BlimpVision::compressed_image_callback(const sensor_msgs::msg::CompressedImage::SharedPtr comp_img_msg) {
+    frame_count_++;
+}

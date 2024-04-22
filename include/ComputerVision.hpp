@@ -41,14 +41,14 @@ using namespace cv;
 
 //Colors
 //Green ball
-// #define B_CORRECTION	        Scalar(29,7,15)
-// #define B_MIN			    Scalar(46,0,0)
-// #define B_MAX			    Scalar(96,74,213)
+#define B_CORRECTION	        Scalar(29,7,15)
+#define B_MIN			    Scalar(46,0,0)
+#define B_MAX			    Scalar(96,74,213)
 
 //Purple ball
-#define B_CORRECTION	        Scalar(0,19,0)
-#define B_MIN			        Scalar(105,0,19)
-#define B_MAX			        Scalar(171,255,255)
+// #define B_CORRECTION	        Scalar(0,19,0)
+// #define B_MIN			        Scalar(105,0,19)
+// #define B_MAX			        Scalar(171,255,255)
 
 #define ORANGE_G_CORRECTION     Scalar(56,68,0)
 #define ORANGE_G_MIN            Scalar(0,0,185)
@@ -157,6 +157,12 @@ class ComputerVision {
 
         //Ball color correction matrices
         cv::Mat ballCorrect_L_, ballCorrect_R_;
+
+        // Perform ORB feature extraction and matching
+        Ptr<ORB> orb_;
+
+        // Ptr<FastFeatureDetector> fast_;
+
     public:
         void init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right);
 
