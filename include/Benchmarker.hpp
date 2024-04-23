@@ -25,7 +25,7 @@ class Benchmarker{
     void benchmarkPrint(){
         if(times.size() < 2) return;
         double deltaTotal = double(times[times.size()-1] - times[0]) / CLOCKS_PER_SEC;
-        for(int i=1; i<times.size(); i++){
+        for(unsigned int i=1; i<times.size(); i++){
             double deltaTime = double(times[i] - times[i-1]) / CLOCKS_PER_SEC;
             float percentTime = deltaTime / deltaTotal * 100;
             percentTime = int(percentTime * 100) / 100.0;

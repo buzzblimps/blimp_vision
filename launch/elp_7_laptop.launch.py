@@ -17,6 +17,16 @@ def generate_launch_description():
             default_value='camera7',
             description='Camera ID'
         ),
+        DeclareLaunchArgument(
+            'imshow',
+            default_value='False',
+            description='Use imshow to render image(s)'
+        ),
+        DeclareLaunchArgument(
+            'depth_rate',
+            default_value='1.0',
+            description='Frequency (in Hz) of depth estimation'
+        ),
         Node(
             package='blimp_vision',
             executable='blimp_vision_node',
@@ -24,7 +34,9 @@ def generate_launch_description():
             namespace=LaunchConfiguration('namespace'),
             parameters=[
                 os.path.join(get_package_share_directory('blimp_vision'), 'param', 'elp_config_laptop.yaml'),
-                {'camera_id': LaunchConfiguration('camera_id')}
+                {'camera_id': LaunchConfiguration('camera_id')},
+                {'imshow': LaunchConfiguration('imshow')},
+                {'depth_rate': LaunchConfiguration('depth_rate')}
             ],
             output='screen'
         )

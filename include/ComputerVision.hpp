@@ -115,6 +115,7 @@ class ComputerVision {
         VideoCapture cap;
 
         image_geometry::StereoCameraModel model_;
+        bool debug_imshow_ = false;
 
         // contains scratch buffers for block matching
         // stereo_image_proc::StereoProcessor block_matcher_;
@@ -181,7 +182,7 @@ class ComputerVision {
         float ball_z_, goal_z_;
 
     public:
-        void init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right);
+        void init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right, bool debug_imshow);
 
         void update(Mat imgL, Mat imgR, autoState mode, goalType goalColor); // Big image processing function
         

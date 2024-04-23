@@ -90,8 +90,16 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     //Todo: move this to parameter
     rect_interpolation_ = cv::INTER_LANCZOS4;
 
+    // Get debug_imshow
+    this->declare_parameter<bool>("imshow");
+    debug_imshow_ = this->get_parameter("imshow").as_bool();
+
+    // Get depth rate
+    this->declare_parameter<double>("depth_rate");
+    depth_rate_ = this->get_parameter("depth_rate").as_double();
+
     //Initialize computer vision processing object with left and right camera infos
-    computer_vision_.init(cinfo_left_, cinfo_right_);
+    computer_vision_.init(cinfo_left_, cinfo_right_, debug_imshow_);
 
     //Open capture device
     cap_.open(video_device, cv::CAP_V4L);
@@ -110,7 +118,7 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
         camera_timer_ = this->create_wall_timer(1ns, std::bind(&BlimpVision::camera_timer_callback, this));
     }
 
-    z_estimation_timer = this->create_wall_timer(0.25s, std::bind(&BlimpVision::z_estimation_timer_callback, this));
+    z_estimation_timer = this->create_wall_timer(1s * 1.0/depth_rate_, std::bind(&BlimpVision::z_estimation_timer_callback, this));
 
     goal_color_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("goal_color", 1, std::bind(&BlimpVision::goal_color_subscription_callback, this, _1));
     state_machine_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("state_machine", 1, std::bind(&BlimpVision::state_machine_subscription_callback, this, _1));
@@ -145,11 +153,11 @@ void BlimpVision::camera_timer_callback() {
     cv::remap(right_frame, right_rect, map_1_right_, map_2_right_, rect_interpolation_, cv::BORDER_CONSTANT, 0);
 
     //Display left and right rectified frames
-    cv::imshow("Left Unrect", left_frame);
-    cv::imshow("Right Unrect", right_frame);
+    if(debug_imshow_) cv::imshow("Left Unrect", left_frame);
+    if(debug_imshow_) cv::imshow("Right Unrect", right_frame);
 
-    cv::imshow("Left Rect", left_rect);
-    cv::imshow("Right Rect", right_rect);
+    if(debug_imshow_) cv::imshow("Left Rect", left_rect);
+    if(debug_imshow_) cv::imshow("Right Rect", right_rect);
 
     if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
         float ball_x, ball_y;
@@ -157,7 +165,7 @@ void BlimpVision::camera_timer_callback() {
         Mat left_rect_ball;
         left_rect.copyTo(left_rect_ball);
         circle(left_rect_ball, Point2f(ball_x, ball_y), 10, Scalar(0, 0, 255), -1);
-        imshow("Left Rect Circle", left_rect_ball);
+        if(debug_imshow_) imshow("Left Rect Circle", left_rect_ball);
         // PUBLISH ball_x, ball_y, ball_z_
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
         float goal_x, goal_y;

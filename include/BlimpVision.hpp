@@ -48,6 +48,8 @@ private:
     int frame_count_;
 
     bool use_img_sub_;
+    bool debug_imshow_ = false;
+    float depth_rate_ = 1.0;
 
     ComputerVision computer_vision_;
     autoState state_machine_ = searching;

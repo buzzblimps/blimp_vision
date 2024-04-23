@@ -8,9 +8,10 @@ using namespace std;
 
 // ============================== CLASS ==============================
 
-void ComputerVision::init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right) {
+void ComputerVision::init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right, bool debug_imshow) {
 
     model_.fromCameraInfo(cinfo_left, cinfo_right);
+    debug_imshow_ = debug_imshow;
 
     //Compute stereo reprojection matrix Q
     double Tx = -model_.baseline();
@@ -133,7 +134,7 @@ bool ComputerVision::estimateBallLeftXY(Mat rectified_left, Mat rectified_right,
     // Generate mask
     Mat mask_left;
     inRange(HSV_left, B_MIN, B_MAX, mask_left);
-    imshow("mask_left", mask_left);
+    if(debug_imshow_) imshow("mask_left", mask_left);
 
     // Morphology (for noise reduction)
     Mat mask_cleaned_left;
@@ -166,10 +167,12 @@ bool ComputerVision::estimateBallLeftXY(Mat rectified_left, Mat rectified_right,
     }
 
     // Draw largest contour
-    Mat rectified_with_contours_left;
-    rectified_left.copyTo(rectified_with_contours_left);
-    drawContours(rectified_with_contours_left, contours_left, index_largest_contour_left, Scalar(255, 255, 255), -1);
-    imshow("Left Rectified with Contour", rectified_with_contours_left);
+    if(debug_imshow_){
+        Mat rectified_with_contours_left;
+        rectified_left.copyTo(rectified_with_contours_left);
+        drawContours(rectified_with_contours_left, contours_left, index_largest_contour_left, Scalar(255, 255, 255), -1);
+        imshow("Left Rectified with Contour", rectified_with_contours_left);
+    }
 
     // Find minimum enclosing circle
     Point2f min_circle_point_left;
@@ -219,7 +222,7 @@ bool ComputerVision::estimateBallZ(float &ball_z){
     // Generate mask
     Mat mask_right;
     inRange(HSV_right, B_MIN, B_MAX, mask_right);
-    imshow("mask_right", mask_right);
+    if(debug_imshow_) imshow("mask_right", mask_right);
 
     // Morphology (for noise reduction)
     Mat mask_cleaned_right;
@@ -279,7 +282,7 @@ bool ComputerVision::estimateBallZ(float &ball_z){
     // Mat circle_masked_left, circle_masked_right;
     // cv::bitwise_and(rectified_left,  rectified_left,  circle_masked_left, mask_circle_left);
     // cv::bitwise_and(rectified_right, rectified_right, circle_masked_right, mask_circle_right);
-    // imshow("Left Circle Masked", circle_masked_left);
+    // if(DEBUG_IMSHOW) imshow("Left Circle Masked", circle_masked_left);
 
     try {
         std::vector<KeyPoint> keypoints_left, keypoints_right;
@@ -437,8 +440,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     // cv::cvtColor(left_rect,  left_rect_mono,  cv::COLOR_BGR2GRAY);
     // cv::cvtColor(right_rect, right_rect_mono, cv::COLOR_BGR2GRAY);
 
-    // imshow("Left Mono",  left_rect_mono);
-    // imshow("Right Mono", right_rect_mono);
+    // if(DEBUG_IMSHOW) imshow("Left Mono",  left_rect_mono);
+    // if(DEBUG_IMSHOW) imshow("Right Mono", right_rect_mono);
 
     // //Compute stereo disparities and weighted least squares filter
     // cv::Mat left_disp, right_disp;
@@ -455,7 +458,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     // filtered_disp.convertTo(disparity_vis, CV_8U, 255.0 / (max_val - min_val), -min_val * 255.0 / (max_val - min_val));
 
     // namedWindow("Filtered Disparity");
-    // imshow("Filtered Disparity", disparity_vis);
+    // if(DEBUG_IMSHOW) imshow("Filtered Disparity", disparity_vis);
 
     // return true;
 
@@ -485,7 +488,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     inRange(left_HSV, B_MIN, B_MAX, bMask_L);
     inRange(right_HSV, B_MIN, B_MAX, bMask_R);
 
-    imshow("bMask_L", bMask_L);
+    if(debug_imshow_) imshow("bMask_L", bMask_L);
 
     //Noise reduction
     Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(5, 5));
@@ -498,11 +501,11 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
 
     //DEBUG: see mask
     //namedWindow("bMask_L");
-    //imshow("bMask_L", bMask_L_cleaned);
+    //if(DEBUG_IMSHOW) imshow("bMask_L", bMask_L_cleaned);
     // piComm->setStreamFrame(bMask_L_cleaned, "bMask_L");
 
     //namedWindow("bMask_R");
-    //imshow("bMask_R", bMask_R_cleaned);
+    //if(DEBUG_IMSHOW) imshow("bMask_R", bMask_R_cleaned);
 
     //Find Largest Contour (Largest Ball)
     benchmarker.benchmark("Pre-contours");
@@ -556,13 +559,13 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     Mat imgLcountours;
     left_rect.copyTo(imgLcountours);
     drawContours(imgLcountours, contoursL, index_L, Scalar(255, 255, 255), -1);
-    // imshow("imgLcountours", imgLcountours);
+    // if(DEBUG_IMSHOW) imshow("imgLcountours", imgLcountours);
 
     //piComm->setStreamFrame(imgL, "Draw Contours");
 
     //namedWindow("contR");
     //drawContours(imgR, contoursR, index_R, Scalar(255, 255, 255), -1);
-    //imshow("contR", imgR);
+    //if(DEBUG_IMSHOW) imshow("contR", imgR);
 
     // Center detection with blob centroid
     // Moments m_L = moments(largestContour_L, true);
@@ -580,12 +583,12 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     // Mat imgLCircle;
     // left_rect.copyTo(imgLCircle);
     // circle(imgLCircle, p_L, radius_L, Scalar(255, 0, 255), 2);
-    // imshow("imgLCircle", imgLCircle);
+    // if(DEBUG_IMSHOW) imshow("imgLCircle", imgLCircle);
 
     // Mat imgRCircle;
     // right_rect.copyTo(imgRCircle);
     // circle(imgRCircle, p_R, radius_R, Scalar(255, 0, 255), 2);
-    // imshow("imgRCircle", imgRCircle);
+    // if(DEBUG_IMSHOW) imshow("imgRCircle", imgRCircle);
 
     // return true;
 
@@ -602,7 +605,7 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     // Mat imgLCircle;
     // left_rect.copyTo(imgLCircle);
     // circle(imgLCircle, p_L, 50, Scalar(0,0,0), -1);
-    // imshow("imgLCircle", imgLCircle);
+    // if(DEBUG_IMSHOW) imshow("imgLCircle", imgLCircle);
 
     threshold(maskL, maskL, 127, 255, THRESH_BINARY);
     threshold(maskR, maskR, 127, 255, THRESH_BINARY);
@@ -612,8 +615,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
     cv::bitwise_and(left_rect,  left_rect,  masked_imgL, maskL);
     cv::bitwise_and(right_rect, right_rect, masked_imgR, maskR);
 
-    // imshow("maskL", masked_imgL);
-    // imshow("maskR", masked_imgR);
+    // if(DEBUG_IMSHOW) imshow("maskL", masked_imgL);
+    // if(DEBUG_IMSHOW) imshow("maskR", masked_imgR);
     // float mask_radius = 0;
 
     benchmarker.benchmark("Pre-try");
@@ -680,8 +683,8 @@ bool ComputerVision::getBall(float &X, float &Y, float &Z, float &area, Mat &lef
         Mat img_matches;
         drawMatches(masked_imgL, kp_filt_L, masked_imgR, kp_filt_R, knn_matches, img_matches);
 
-        namedWindow("ORB Matches");
-        imshow("ORB Matches", img_matches);
+        if(debug_imshow_) namedWindow("ORB Matches");
+        if(debug_imshow_) imshow("ORB Matches", img_matches);
 
         benchmarker.benchmark("Post-orb");
 
@@ -806,12 +809,12 @@ void ComputerVision::getGoal(float &X, float &Y, float &Z, float &area, float &a
     morphologyEx(bMask_R_cleaned, bMask_R_cleaned, MORPH_OPEN, kernel);
 
     //DEBUG: see mask
-    //namedWindow("bMask_L");
-    //imshow("bMask_L", bMask_L_cleaned);
+    //if(DEBUG_IMSHOW) namedWindow("bMask_L");
+    //if(DEBUG_IMSHOW) imshow("bMask_L", bMask_L_cleaned);
     //waitKey(1);
 
-    //namedWindow("bMask_R");
-    //imshow("bMask_R", bMask_R_cleaned);
+    //if(DEBUG_IMSHOW) namedWindow("bMask_R");
+    //if(DEBUG_IMSHOW) imshow("bMask_R", bMask_R_cleaned);
     //waitKey(1);
 
     //Find Contours
@@ -992,8 +995,8 @@ void ComputerVision::getGoal(float &X, float &Y, float &Z, float &area, float &a
           threshold(mask, mask, 127, 255, THRESH_BINARY);
           bitwise_and(imgL, imgL, masked_imgL_, mask);
 
-          namedWindow("bruh");
-          imshow("bruh", masked_imgL_);
+          if(debug_imshow_) namedWindow("bruh");
+          if(debug_imshow_) ("bruh", masked_imgL_);
           //waitKey(1);
 
           double widthHeightRatioL = (double)rectL.width / rectL.height;
@@ -1048,17 +1051,17 @@ void ComputerVision::getGoal(float &X, float &Y, float &Z, float &area, float &a
     // Display the result
     // piComm->setStreamFrame(bMask_L_cleaned, "bMask_L");
 
-    //imshow("ApproximationsL", bMask_L_cleaned);
+    //if(DEBUG_IMSHOW) imshow("ApproximationsL", bMask_L_cleaned);
     //waitKey(1);
     // piComm->setStreamFrame(bMask_L_cleaned, "bMask_L");
-    //imshow("ApproximationsR", bMask_R_cleaned);
+    //if(DEBUG_IMSHOW) imshow("ApproximationsR", bMask_R_cleaned);
     //waitKey(1);
 
     Mat masked_imgR_;
     bitwise_and(Left_nice, Left_nice, masked_imgR_, bMask_R_cleaned);
 
-    //namedWindow("Test");
-    //imshow("Test", masked_imgR_);
+    //if(DEBUG_IMSHOW) namedWindow("Test");
+    //if(DEBUG_IMSHOW) imshow("Test", masked_imgR_);
     //waitKey(1);
     
     /*
@@ -1079,7 +1082,7 @@ void ComputerVision::getGoal(float &X, float &Y, float &Z, float &area, float &a
         cv::drawContours(bMask_L_cleaned, approximationsL, i, cv::Scalar(0, 255, 0), 2);
     }
 
-    cv::imshow("Approximations", bMask_L_cleaned);
+    if(DEBUG_IMSHOW) cv::imshow("Approximations", bMask_L_cleaned);
     cv::waitKey(1);
 
     std::vector<cv::Point2f> corners;
@@ -1095,11 +1098,11 @@ void ComputerVision::getGoal(float &X, float &Y, float &Z, float &area, float &a
           cv::circle(bMask_L_cleaned, corners[i], 5, cv::Scalar(255), -1);
       }
 
-    cv::imshow("Corners", bMask_L_cleaned);
+    if(DEBUG_IMSHOW) cv::imshow("Corners", bMask_L_cleaned);
     cv::waitKey(1);
 
     // Show image with detected incomplete rectangles
-    imshow("Detected rectangles", bMask_L_cleaned);
+    if(DEBUG_IMSHOW) imshow("Detected rectangles", bMask_L_cleaned);
     waitKey(1);
 
     */
