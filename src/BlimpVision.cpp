@@ -123,6 +123,8 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     goal_color_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("goal_color", 1, std::bind(&BlimpVision::goal_color_subscription_callback, this, _1));
     state_machine_subscriber_ = this->create_subscription<std_msgs::msg::Int64>("state_machine", 1, std::bind(&BlimpVision::state_machine_subscription_callback, this, _1));
 
+    targets_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("targets", 1);
+
     startTime_ = this->now();
 }
 
@@ -162,15 +164,44 @@ void BlimpVision::camera_timer_callback() {
     if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
         float ball_x, ball_y;
         bool success = computer_vision_.estimateBallLeftXY(left_rect, right_rect, ball_x, ball_y);
-        Mat left_rect_ball;
-        left_rect.copyTo(left_rect_ball);
-        circle(left_rect_ball, Point2f(ball_x, ball_y), 10, Scalar(0, 0, 255), -1);
-        if(debug_imshow_) imshow("Left Rect Circle", left_rect_ball);
+        if(success){
+            cv::Mat left_rect_ball;
+            left_rect.copyTo(left_rect_ball);
+            cv::circle(left_rect_ball, cv::Point2f(ball_x, ball_y), 10, cv::Scalar(0, 0, 255), -1);
+            if(debug_imshow_) cv::imshow("Left Rect Circle", left_rect_ball);
+        }
+
         // PUBLISH ball_x, ball_y, ball_z_
+        std_msgs::msg::Float64MultiArray targets_msg;
+        targets_msg.data.clear();
+        if(success){
+            targets_msg.data.push_back(ball_x);
+            targets_msg.data.push_back(ball_y);
+            targets_msg.data.push_back(ball_z_);
+        }else{
+            targets_msg.data.push_back(0);
+            targets_msg.data.push_back(0);
+            targets_msg.data.push_back(1000);
+        }
+        targets_publisher_->publish(targets_msg);
+
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
-        float goal_x, goal_y;
-        bool success = computer_vision_.estimateGoalLeftXY(left_rect, right_rect, goal_x, goal_y);
-        // PUBLISH goal_x, goal_y, goal_z_
+        // float goal_x, goal_y, goal_z;
+        // bool success = computer_vision_.estimateGoalLeftXY(left_rect, right_rect, goal_x, goal_y, goal_z, goal_color_);
+
+        // // PUBLISH goal_x, goal_y, goal_z_
+        // std_msgs::msg::Float64MultiArray targets_msg;
+        // targets_msg.data.clear();
+        // if(success){
+        //     targets_msg.data.push_back(goal_x);
+        //     targets_msg.data.push_back(goal_y);
+        //     targets_msg.data.push_back(goal_z);
+        // }else{
+        //     targets_msg.data.push_back(0);
+        //     targets_msg.data.push_back(0);
+        //     targets_msg.data.push_back(1000);
+        // }
+        // targets_publisher_->publish(targets_msg);
     }
 
     cv::waitKey(1);
@@ -179,12 +210,11 @@ void BlimpVision::camera_timer_callback() {
 
 void BlimpVision::z_estimation_timer_callback() {
     if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
-        float ball_z;
-        bool success = computer_vision_.estimateBallZ(ball_z);
-        cout << "ball_z: " << ball_z << endl;
+        bool success = computer_vision_.estimateBallZ(ball_z_);
+        std::cout << "ball_z_: " << ball_z_ << std::endl;
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
-        float goal_z;
-        bool success = computer_vision_.estimateGoalZ(goal_z);
+        // bool success = computer_vision_.estimateGoalZ(goal_z_);
+        // std::cout << "goal_z_: " << goal_z_ << std::endl;
     }
 }
 
@@ -192,7 +222,7 @@ void BlimpVision::goal_color_subscription_callback(const std_msgs::msg::Int64::S
     try{
         goal_color_ = static_cast<goalType>(goal_color_msg->data);
     }catch(const std::exception){
-        cout << "Recieved invalid goal_color value (" << goal_color_msg->data << ")." << endl;
+        std::cout << "Recieved invalid goal_color value (" << goal_color_msg->data << ")." << std::endl;
     }
 }
 
@@ -200,7 +230,7 @@ void BlimpVision::state_machine_subscription_callback(const std_msgs::msg::Int64
     try{
         state_machine_ = static_cast<autoState>(state_machine_msg->data);
     }catch(const std::exception){
-        cout << "Recieved invalid state_machine value (" << state_machine_msg->data << ")." << endl;
+        std::cout << "Recieved invalid state_machine value (" << state_machine_msg->data << ")." << std::endl;
     }
 }
 

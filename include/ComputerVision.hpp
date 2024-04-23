@@ -12,8 +12,8 @@
 
 #include "Benchmarker.hpp"
 
-using namespace std;
-using namespace cv;
+// using namespace std;
+// using namespace cv;
 
 // ============================== DEFINES ==============================
 #define CAMERA_WIDTH	    1280
@@ -43,22 +43,29 @@ using namespace cv;
 
 //Colors
 //Green ball
-// #define B_CORRECTION     Scalar(29,7,15)
-// #define B_MIN            Scalar(46,0,0)
-// #define B_MAX            Scalar(96,74,213)
+// #define B_CORRECTION     cv::Scalar(29,7,15)
+// #define B_MIN            cv::Scalar(46,0,0)
+// #define B_MAX            cv::Scalar(96,74,213)
 
 //Purple ball
-#define B_CORRECTION        Scalar(0,19,0)
-#define B_MIN               Scalar(105,0,19)
-#define B_MAX               Scalar(171,255,255)
+#define B_CORRECTION        cv::Scalar(0,19,0)
+#define B_MIN               cv::Scalar(105,0,19)
+#define B_MAX               cv::Scalar(171,255,255)
 
-#define ORANGE_G_CORRECTION     Scalar(56,68,0)
-#define ORANGE_G_MIN            Scalar(0,0,185)
-#define ORANGE_G_MAX            Scalar(61,255,255)
+// #define ORANGE_G_CORRECTION     cv::Scalar(56,68,0)
+// #define ORANGE_G_MIN            cv::Scalar(0,0,185)
+// #define ORANGE_G_MAX            cv::Scalar(61,255,255)
+#define ORANGE_G_CORRECTION    cv::Scalar(0,47,0)
+#define ORANGE_G_MIN           cv::Scalar(13,0,0)
+#define ORANGE_G_MAX           cv::Scalar(24,255,255)
 
-#define YELLOW_G_CORRECTION	    Scalar(91,42,0)
-#define YELLOW_G_MIN			Scalar(24,37,0)
-#define YELLOW_G_MAX			Scalar(91, 255, 255)
+// #define YELLOW_G_CORRECTION	    cv::Scalar(91,42,0)
+// #define YELLOW_G_MIN			cv::Scalar(24,37,0)
+// #define YELLOW_G_MAX			cv::Scalar(91, 255, 255)
+
+#define YELLOW_G_CORRECTION     cv::Scalar(48,0,0)
+#define YELLOW_G_MIN            cv::Scalar(25,0,0)
+#define YELLOW_G_MAX            cv::Scalar(63, 255, 255)
 
 #define CONVERSION		    0.15
 
@@ -112,7 +119,7 @@ enum goalType{
 
 class ComputerVision {
     private:
-        VideoCapture cap;
+        cv::VideoCapture cap;
 
         image_geometry::StereoCameraModel model_;
         bool debug_imshow_ = false;
@@ -128,13 +135,13 @@ class ComputerVision {
         // Mat Q;
 
         // Stereo matcher
-        Ptr<StereoBM> left_matcher_;
-        Ptr<ximgproc::DisparityWLSFilter> wls_filter_;
-        Ptr<StereoMatcher> right_matcher_;
+        cv::Ptr<cv::StereoBM> left_matcher_;
+        cv::Ptr<cv::ximgproc::DisparityWLSFilter> wls_filter_;
+        cv::Ptr<cv::StereoMatcher> right_matcher_;
 
         // Identified objects
-        std::vector<vector<float>> balloons;
-        std::vector<vector<float>> goals;
+        std::vector<std::vector<float>> balloons;
+        std::vector<std::vector<float>> goals;
 
         // Object avoidance quadrant
         int quad;
@@ -142,14 +149,14 @@ class ComputerVision {
         // Goal detection
         double pixelDensityL = 0.2;
         double pixelDensityR = 0.2;
-        Mat output, output_norm, output_norm_scaled;
+        cv::Mat output, output_norm, output_norm_scaled;
 
-        vector<Point> scaleContour(vector<Point> contour, float scale);
+        std::vector<cv::Point> scaleContour(std::vector<cv::Point> contour, float scale);
 
-        string srcDir;
+        std::string srcDir;
 
-        bool getBall(float &X, float &Y, float &Z, float &area, Mat &imgL, Mat &imgR);
-        void getGoal(float &X, float &Y, float &Z, float &area, float &angle, Mat imgL, Mat imgR);
+        bool getBall(float &X, float &Y, float &Z, float &area, cv::Mat &imgL, cv::Mat &imgR);
+        void getGoal(float &X, float &Y, float &Z, float &area, float &angle, cv::Mat imgL, cv::Mat imgR);
 
         // Store left camera's corrected view
         cv::Mat left_correct_, right_correct_;
@@ -160,11 +167,11 @@ class ComputerVision {
         // Ball color correction matrices
         cv::Mat ballCorrect_L_, ballCorrect_R_;
 
-        // Ball morphology kernel
-        cv::Mat ball_kernel;
+        // Morphology kernels
+        cv::Mat ball_kernel, goal_kernel;
 
         // Perform ORB feature extraction and matching
-        Ptr<ORB> orb_;
+        cv::Ptr<cv::ORB> orb_;
 
         // Ptr<FastFeatureDetector> fast_;
 
@@ -175,24 +182,22 @@ class ComputerVision {
         cv::Mat rectified_left_, rectified_right_;
         // cv::Point2f min_circle_point_left_;
         // float min_circle_radius_left_;
-        vector<vector<Point>> contours_left_;
+        std::vector<std::vector<cv::Point>> contours_left_;
         int index_largest_contour_left_ = 0;
 
-        // Variable for latched z estimation
-        float ball_z_, goal_z_;
-
     public:
+
         void init(const sensor_msgs::msg::CameraInfo &cinfo_left, const sensor_msgs::msg::CameraInfo &cinfo_right, bool debug_imshow);
 
-        void update(Mat imgL, Mat imgR, autoState mode, goalType goalColor); // Big image processing function
+        // void update(cv::Mat imgL, cv::Mat imgR, autoState mode, goalType goalColor); // Big image processing function
         
-        bool estimateBallLeftXY(Mat rectified_left, Mat rectified_right, float &ball_x, float &ball_y);
+        bool estimateBallLeftXY(cv::Mat rectified_left, cv::Mat rectified_right, float &ball_x, float &ball_y);
         bool estimateBallZ(float &ball_z);
 
-        bool estimateGoalLeftXY(Mat rectified_left, Mat rectified_right, float &goal_x, float &goal_y);
-        bool estimateGoalZ(float &goal_z);        
+        bool estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectified_right, float &goal_x, float &goal_y, float &goal_z, goalType goal_color);
+        // bool estimateGoalZ(float &goal_z);        
         
-        vector<vector<float>> getTargetBalloon();
-        vector<vector<float>> getTargetGoal();
-        int getQuad();
+        // std::vector<std::vector<float>> getTargetBalloon();
+        // std::vector<std::vector<float>> getTargetGoal();
+        // int getQuad();
 };

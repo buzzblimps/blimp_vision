@@ -32,13 +32,15 @@ private:
     rclcpp::Subscription<std_msgs::msg::Int64>::SharedPtr state_machine_subscriber_;
     rclcpp::TimerBase::SharedPtr one_hz_timer_, camera_timer_, z_estimation_timer;
 
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr targets_publisher_;
+
     std::shared_ptr<camera_info_manager::CameraInfoManager> cinfomgr_left_;
     std::shared_ptr<camera_info_manager::CameraInfoManager> cinfomgr_right_;
 
     sensor_msgs::msg::CameraInfo cinfo_left_;
     sensor_msgs::msg::CameraInfo cinfo_right_;
 
-    VideoCapture cap_;
+    cv::VideoCapture cap_;
     cv::Mat map_1_left_, map_2_left_;
     cv::Mat map_1_right_, map_2_right_;
 
@@ -54,6 +56,9 @@ private:
     ComputerVision computer_vision_;
     autoState state_machine_ = searching;
     goalType goal_color_ = orange;
+
+    float ball_z_ = 1000;
+    float goal_z_ = 1000;
 
     void one_hz_timer_callback();
     void camera_timer_callback();
