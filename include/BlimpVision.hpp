@@ -24,6 +24,7 @@
 #include <libv4l2.h>
 
 #include "ComputerVision.hpp"
+#include "VideoSaver.hpp"
 
 class BlimpVision : public rclcpp::Node {
 private:
@@ -44,6 +45,9 @@ private:
     cv::Mat map_1_left_, map_2_left_;
     cv::Mat map_1_right_, map_2_right_;
 
+    bool save_video_ = false;
+    VideoSaver videoSaver_;
+
     int image_width_, image_height_;
 
     int rect_interpolation_;
@@ -54,8 +58,9 @@ private:
     float depth_rate_ = 1.0;
 
     ComputerVision computer_vision_;
+    // autoState state_machine_ = searching;
     autoState state_machine_ = searching;
-    goalType goal_color_ = orange;
+    goalType goal_color_ = yellow;
 
     float ball_z_ = 1000;
     float goal_z_ = 1000;

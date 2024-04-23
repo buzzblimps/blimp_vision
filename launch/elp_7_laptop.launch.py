@@ -27,6 +27,11 @@ def generate_launch_description():
             default_value='1.0',
             description='Frequency (in Hz) of depth estimation'
         ),
+        DeclareLaunchArgument(
+            'save_video',
+            default_value='False',
+            description='Save video feed'
+        ),
         Node(
             package='blimp_vision',
             executable='blimp_vision_node',
@@ -36,7 +41,8 @@ def generate_launch_description():
                 os.path.join(get_package_share_directory('blimp_vision'), 'param', 'elp_config_laptop.yaml'),
                 {'camera_id': LaunchConfiguration('camera_id')},
                 {'imshow': LaunchConfiguration('imshow')},
-                {'depth_rate': LaunchConfiguration('depth_rate')}
+                {'depth_rate': LaunchConfiguration('depth_rate')},
+                {'save_video': LaunchConfiguration('save_video')}
             ],
             output='screen'
         )

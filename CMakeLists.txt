@@ -24,6 +24,7 @@ add_executable(
     include/BlimpVision.hpp
     include/ComputerVision.hpp
     include/Benchmarker.hpp
+    include/VideoSaver.hpp
 )
 
 ament_target_dependencies(

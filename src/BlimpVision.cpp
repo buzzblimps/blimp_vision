@@ -98,6 +98,11 @@ BlimpVision::BlimpVision() : Node("blimp_vision_node"), frame_count_(0) {
     this->declare_parameter<double>("depth_rate");
     depth_rate_ = this->get_parameter("depth_rate").as_double();
 
+    // Get save video
+    this->declare_parameter<bool>("save_video");
+    save_video_ = this->get_parameter("save_video").as_bool();
+    if(save_video_) videoSaver_.init("video.avi", 20, false);
+
     //Initialize computer vision processing object with left and right camera infos
     computer_vision_.init(cinfo_left_, cinfo_right_, debug_imshow_);
 
@@ -142,6 +147,7 @@ void BlimpVision::camera_timer_callback() {
 
     cv::Mat sync_frame;
     cap_.retrieve(sync_frame);
+    if(save_video_) videoSaver_.writeFrame(sync_frame);
 
     //Split into left and right images
     cv::Rect left_roi(0, 0, sync_frame.cols/2, sync_frame.rows);
@@ -171,6 +177,9 @@ void BlimpVision::camera_timer_callback() {
             if(debug_imshow_) cv::imshow("Left Rect Circle", left_rect_ball);
         }
 
+        ball_x -= image_width_/4;
+        ball_y -= image_height_/2;
+
         // PUBLISH ball_x, ball_y, ball_z_
         std_msgs::msg::Float64MultiArray targets_msg;
         targets_msg.data.clear();
@@ -186,22 +195,32 @@ void BlimpVision::camera_timer_callback() {
         targets_publisher_->publish(targets_msg);
 
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
-        // float goal_x, goal_y, goal_z;
-        // bool success = computer_vision_.estimateGoalLeftXY(left_rect, right_rect, goal_x, goal_y, goal_z, goal_color_);
+        float goal_x, goal_y, goal_z;
+        bool success = computer_vision_.estimateGoalLeftXY(left_rect, right_rect, goal_x, goal_y, goal_z, goal_color_);
+        if(success){
+            cv::Mat left_rect_goal;
+            left_rect.copyTo(left_rect_goal);
+            cv::circle(left_rect_goal, cv::Point2f(goal_x, goal_y), 10, cv::Scalar(0, 0, 255), -1);
+            if(debug_imshow_) cv::imshow("Left Rect Goal", left_rect_goal);
+        }
+        std::cout << "goal_z: " << goal_z << std::endl;
 
-        // // PUBLISH goal_x, goal_y, goal_z_
-        // std_msgs::msg::Float64MultiArray targets_msg;
-        // targets_msg.data.clear();
-        // if(success){
-        //     targets_msg.data.push_back(goal_x);
-        //     targets_msg.data.push_back(goal_y);
-        //     targets_msg.data.push_back(goal_z);
-        // }else{
-        //     targets_msg.data.push_back(0);
-        //     targets_msg.data.push_back(0);
-        //     targets_msg.data.push_back(1000);
-        // }
-        // targets_publisher_->publish(targets_msg);
+        goal_x -= image_width_/4;
+        goal_y -= image_height_/2;
+
+        // PUBLISH goal_x, goal_y, goal_z_
+        std_msgs::msg::Float64MultiArray targets_msg;
+        targets_msg.data.clear();
+        if(success){
+            targets_msg.data.push_back(goal_x);
+            targets_msg.data.push_back(goal_y);
+            targets_msg.data.push_back(goal_z);
+        }else{
+            targets_msg.data.push_back(0);
+            targets_msg.data.push_back(0);
+            targets_msg.data.push_back(1000);
+        }
+        targets_publisher_->publish(targets_msg);
     }
 
     cv::waitKey(1);

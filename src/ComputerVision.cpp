@@ -181,8 +181,8 @@ bool ComputerVision::estimateBallLeftXY(cv::Mat rectified_left, cv::Mat rectifie
     cv::minEnclosingCircle(largest_contour_left, min_circle_point_left, min_circle_radius_left);
 
     // Prepare return values
-    ball_x = min_circle_point_left.x - CAMERA_WIDTH/2;
-    ball_y = min_circle_point_left.y - CAMERA_HEIGHT/2;
+    ball_x = min_circle_point_left.x;
+    ball_y = min_circle_point_left.y;
 
     // Store variables (multi-threading)
     rectified_left.copyTo(rectified_left_);
@@ -470,10 +470,10 @@ bool ComputerVision::estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectifie
 
             // Center and 4 corners of the bounding box
             cv::Point centerL = cv::Point(rectL.x + rectL.width / 2, rectL.y + rectL.height / 2);
-            cv::Point ltCorner = cv::Point(rectL.x, rectL.y + rectL.height);
-            cv::Point rtCorner = cv::Point(rectL.x + rectL.width, rectL.y + rectL.height);
-            cv::Point lbCorner = cv::Point(rectL.x, rectL.y);
-            cv::Point rbCorner = cv::Point(rectL.x + rectL.width, rectL.y);
+            // cv::Point ltCorner = cv::Point(rectL.x, rectL.y + rectL.height);
+            // cv::Point rtCorner = cv::Point(rectL.x + rectL.width, rectL.y + rectL.height);
+            // cv::Point lbCorner = cv::Point(rectL.x, rectL.y);
+            // cv::Point rbCorner = cv::Point(rectL.x + rectL.width, rectL.y);
 
             cv::Point centerR = cv::Point(rectR.x + rectR.width / 2, rectR.y + rectR.height / 2);
 
@@ -565,7 +565,7 @@ bool ComputerVision::estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectifie
                     }
                 }
 
-                std::cout << "corners:" << std::endl << averaged_corners << std::endl;
+                // std::cout << "corners:" << std::endl << averaged_corners << std::endl;
 
                 // Draw circles at the averaged corners on the original image
                 for (int i = 0; i < averaged_corners.size(); i++) {
@@ -578,7 +578,7 @@ bool ComputerVision::estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectifie
                 // Create a grayscale image mask with the same size as the original image
                 cv::Mat mask(rectified_left.size(), CV_8UC1, cv::Scalar(0));
 
-                std::cout << averaged_corners.size() << std::endl;
+                // std::cout << averaged_corners.size() << std::endl;
 
                 // Draw circles with the specified radius around each averaged corner point
                 //for (int i = 0; i < averaged_corners.size(); i++) {
@@ -612,12 +612,12 @@ bool ComputerVision::estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectifie
                         distance = 1000.0;
                     } 
                     
-                    std::cout << distance << std::endl;
+                    // std::cout << distance << std::endl;
                     //std::cout << "Area (Left,Right): " << areaL << ", " << areaR << endl;
 
                     // Set Outputs
-                    goal_x = (centerL.x + centerR.x)/2 - CAMERA_WIDTH/2;
-                    goal_y = (centerL.y + centerR.y)/2 - CAMERA_HEIGHT/2;
+                    goal_x = (centerL.x + centerR.x)/2;
+                    goal_y = (centerL.y + centerR.y)/2;
                     goal_z = distance;  // For now
                     return true;
                 }
