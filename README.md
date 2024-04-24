@@ -18,15 +18,22 @@
 ## Configure Blimp Namespace and Camera for opi#
 1. Open the appropriate opi_vision_start script located at:
 `blimp_vision/scripts/opi_vision_start_scripts/opi_vision_start_#.sh`
+
 2. Edit appropriate namespace and camera parameters.
     - If needed, you can change the video device by adding to the opi_vision_start script (example):
         - `camera_device:='/dev/video0'`
-3. Once blimp parameters are set, run the following batch command:
+
+3. Once blimp parameters are set, run the appropriate command:
+    ### Single Command
+    ```
+    ./push_opi_vision_start.sh [opi number] [opi password]
+    ```
+    ### Batch Command
     ```
     ./batch_push_opi_vision_start.sh [opi password]
     ```
 
-## Push and Build Vision Code
+## Push and Build Vision Code (slow)
 1. To push the vision code to a specific blimp, run the following command:
     ```
     ./push_vision.sh [hostname] [opi password]
