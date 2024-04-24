@@ -196,7 +196,7 @@ void BlimpVision::camera_timer_callback() {
 
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
         float goal_x, goal_y, goal_z;
-        bool success = computer_vision_.estimateGoalLeftXY(left_rect, right_rect, goal_x, goal_y, goal_z, goal_color_);
+        bool success = computer_vision_.estimateGoalLeftXYZ(left_rect, right_rect, goal_x, goal_y, goal_z, goal_color_);
         if(success){
             cv::Mat left_rect_goal;
             left_rect.copyTo(left_rect_goal);
