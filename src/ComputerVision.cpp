@@ -367,7 +367,7 @@ bool ComputerVision::estimateBallZ(float &ball_z){
     return false;
 }
 
-bool ComputerVision::estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectified_right, float &goal_x, float &goal_y, float &goal_z, goalType goal_color){
+bool ComputerVision::estimateGoalLeftXYZ(cv::Mat rectified_left, cv::Mat rectified_right, float &goal_x, float &goal_y, float &goal_z, goalType goal_color){
     // Blur to reduce noise
     cv::Mat blurred_left, blurred_right;
     cv::GaussianBlur(rectified_left, blurred_left, cv::Size(5, 5), 2);
@@ -635,11 +635,6 @@ bool ComputerVision::estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectifie
     goal_z = 1000;
     return false;
 }
-
-// bool ComputerVision::estimateGoalZ(float &goal_z){
-//     cout << "Not implemented" << endl;
-//     return false;
-// }
 
 // vector<vector<float>> ComputerVision::getTargetBalloon() {
 //     std::vector<std::vector<float> > target;

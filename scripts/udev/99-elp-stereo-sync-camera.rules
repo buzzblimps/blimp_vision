@@ -1,0 +1,2 @@
+# ELP Dual Lens Sync Camera
+SUBSYSTEM=="video4linux", ATTRS{idVendor}=="32e4", ATTRS{idProduct}=="9750", ENV{ID_V4L_CAPABILITIES}==":capture:", SYMLINK+="elp_sync", MODE="0776"

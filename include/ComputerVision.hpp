@@ -194,8 +194,7 @@ class ComputerVision {
         bool estimateBallLeftXY(cv::Mat rectified_left, cv::Mat rectified_right, float &ball_x, float &ball_y);
         bool estimateBallZ(float &ball_z);
 
-        bool estimateGoalLeftXY(cv::Mat rectified_left, cv::Mat rectified_right, float &goal_x, float &goal_y, float &goal_z, goalType goal_color);
-        // bool estimateGoalZ(float &goal_z);        
+        bool estimateGoalLeftXYZ(cv::Mat rectified_left, cv::Mat rectified_right, float &goal_x, float &goal_y, float &goal_z, goalType goal_color);
         
         // std::vector<std::vector<float>> getTargetBalloon();
         // std::vector<std::vector<float>> getTargetGoal();

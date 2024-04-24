@@ -203,7 +203,7 @@ void BlimpVision::camera_timer_callback() {
             cv::circle(left_rect_goal, cv::Point2f(goal_x, goal_y), 10, cv::Scalar(0, 0, 255), -1);
             if(debug_imshow_) cv::imshow("Left Rect Goal", left_rect_goal);
         }
-        std::cout << "goal_z: " << goal_z << std::endl;
+        // std::cout << "goal_z: " << goal_z << std::endl;
 
         goal_x -= image_width_/4;
         goal_y -= image_height_/2;
@@ -230,7 +230,7 @@ void BlimpVision::camera_timer_callback() {
 void BlimpVision::z_estimation_timer_callback() {
     if(state_machine_ == searching || state_machine_ == approach || state_machine_ == catching){
         bool success = computer_vision_.estimateBallZ(ball_z_);
-        std::cout << "ball_z_: " << ball_z_ << std::endl;
+        // std::cout << "ball_z_: " << ball_z_ << std::endl;
     } else if(state_machine_ == goalSearch || state_machine_ == approachGoal || state_machine_ == scoringStart || state_machine_ == shooting){
         // bool success = computer_vision_.estimateGoalZ(goal_z_);
         // std::cout << "goal_z_: " << goal_z_ << std::endl;

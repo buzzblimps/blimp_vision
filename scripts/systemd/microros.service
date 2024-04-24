@@ -1,0 +1,14 @@
+[Unit]
+Description=OrangePi Microros Service
+Requires=network.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /home/opi/scripts/microros_start.sh
+User=opi
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target
