@@ -1,6 +1,6 @@
 #!/bin/bash
 
-blimp_vision_dir="/home/laptop-4/ros2_ws/src/blimp_vision"
+blimp_vision_dir="/home/$USER/ros2_ws/src/blimp_vision"
 
 if [ "$1" != "" ]; then
     pass=$1

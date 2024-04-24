@@ -3,7 +3,7 @@ if [ "$1" != "" ] && [ "$2" != "" ]; then
 	hostname=$1
     pass=$2
 
-    blimp_vision_dir="/home/laptop-4/ros2_ws/src/blimp_vision"
+    blimp_vision_dir="/home/$USER/ros2_ws/src/blimp_vision"
 	
 	# Check if device is online
 	timeout=1
@@ -14,7 +14,7 @@ if [ "$1" != "" ] && [ "$2" != "" ]; then
 
         # Verify workspace folder
 		echo ">>Verifying workspace"
-        ssh opi@$hostname "mkdir -p ~/ros2_ws/src"
+        ssh opi@$hostname "mkdir -p /home/opi/ros2_ws/src"
 
         # Copy blimp_vision package
         echo ">>Copying blimp_vision to opi@$hostname"
@@ -22,7 +22,7 @@ if [ "$1" != "" ] && [ "$2" != "" ]; then
 
         # Colcon build
         echo ">>Executing colcon build"
-        ssh opi@$hostname "source /opt/ros/humble/setup.bash; cd ~/ros2_ws/; colcon build"
+        ssh opi@$hostname "source /opt/ros/humble/setup.bash; cd /home/opi/ros2_ws/; colcon build"
 
         # Start opi_vision service
         echo $pass | ssh -tt opi@$hostname "sudo systemctl start opi_vision"

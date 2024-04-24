@@ -1,7 +1,7 @@
-# Read Me for blimp_vision (using laptop-4)
+# Read Me for blimp_vision
+**This directory should be placed in /home/$USER/ros2_ws/src/**
 
 ## One-Time Setup Scripts
-Run on laptop-4. (To-do, support all laptops)
 
 ### udev
 1. In `blimp_vision/scripts`, run the following batch command:
