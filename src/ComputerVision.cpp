@@ -357,7 +357,7 @@ bool ComputerVision::estimateBallZ(float &ball_z){
         if(!isnan(avg_distance) && abs(avg_distance) < 1000){
             ball_z = avg_distance;
         }else{
-            ball_z = 10;
+            ball_z = 1000;
         }
         return true;
 
@@ -428,6 +428,7 @@ bool ComputerVision::estimateGoalLeftXYZ(cv::Mat rectified_left, cv::Mat rectifi
     cv::Rect rectL;
     cv::Rect rectR;
 
+    // Iterate through left contours
     
 
     // Try-Catch for numerous failure points
