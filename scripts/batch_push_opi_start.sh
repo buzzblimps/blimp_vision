@@ -20,7 +20,7 @@ if [ "$1" != "" ]; then
 			echo $pass | ssh -tt opi@$hostname "sudo systemctl stop opi_vision"
 
 			ssh opi@$hostname "mkdir -p /home/opi/scripts"
-			scp $blimp_vision_dir/scripts/opi_vision_start_scripts/opi_vision_start_$n.sh opi@$hostname:/home/opi/scripts/
+			scp $blimp_vision_dir/scripts/opi_start_scripts/opi_vision_start_$n.sh opi@$hostname:/home/opi/scripts/
 			ssh opi@$hostname "mv /home/opi/scripts/opi_vision_start_$n.sh /home/opi/scripts/opi_vision_start.sh; chmod 755 /home/opi/scripts/opi_vision_start.sh"
 			
 			# Start opi_vision service

@@ -34,7 +34,7 @@ if [ "$1" != "" ]; then
         fi
     done
 else
-	echo "Usage: batch_push_systemd.sh [opi password]"
+	echo "Usage: batch_push_udev.sh [opi password]"
 fi
 
 

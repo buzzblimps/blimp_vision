@@ -32,5 +32,5 @@ if [ "$1" != "" ] && [ "$2" != "" ]; then
 		echo "$hostname is offline :("
 	fi
 else
-	echo "Usage: copy_to_opi.sh [hostname] [opi password]"
+	echo "Usage: push_vision.sh [hostname] [opi password]"
 fi

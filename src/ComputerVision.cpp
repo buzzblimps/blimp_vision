@@ -356,8 +356,10 @@ bool ComputerVision::estimateBallZ(float &ball_z){
         // Return values
         if(!isnan(avg_distance) && abs(avg_distance) < 1000){
             ball_z = avg_distance;
-            return true;
+        }else{
+            ball_z = 10;
         }
+        return true;
 
     } catch (const cv::Exception){
         std::cout << "Failed" << std::endl;
@@ -425,6 +427,8 @@ bool ComputerVision::estimateGoalLeftXYZ(cv::Mat rectified_left, cv::Mat rectifi
     // Find the bounding rectangle of the largest contour
     cv::Rect rectL;
     cv::Rect rectR;
+
+    
 
     // Try-Catch for numerous failure points
     try {
