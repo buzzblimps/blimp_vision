@@ -30,6 +30,6 @@ if [ "$1" != "" ] && [ "$2" != "" ]; then
     fi
 
 else
-	echo "Usage: push_opi_vision_start.sh [opi number] [opi password]"
+	echo "Usage: push_vision_start.sh [opi number] [opi password]"
 fi
 

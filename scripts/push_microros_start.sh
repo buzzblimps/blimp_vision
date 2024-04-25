@@ -30,6 +30,6 @@ if [ "$1" != "" ] && [ "$2" != "" ]; then
     fi
 
 else
-	echo "Usage: push_opi_microros_start.sh [opi number] [opi password]"
+	echo "Usage: push_microros_start.sh [opi number] [opi password]"
 fi
 

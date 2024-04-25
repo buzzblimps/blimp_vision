@@ -33,6 +33,6 @@ if [ "$1" != "" ]; then
 	done
 
 else
-	echo "Usage: batch_push_opi_vision_start.sh [opi password]"
+	echo "Usage: batch_push_vision_start.sh [opi password]"
 fi
 
